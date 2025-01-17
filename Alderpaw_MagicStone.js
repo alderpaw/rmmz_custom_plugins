@@ -6,6 +6,7 @@
  * @target MZ
  * @plugindesc [Version 1.0] 类似于空零碧或者闪轨的回路系统
  * @author Alderpaw
+ * @url https://github.com/alderpaw/rmmz_custom_plugins
  * 
  * @param magicEquipSettingParent
  * @text 魔石装备定义
@@ -150,16 +151,6 @@
  * 
  * 实现一套轨迹系列的导力器系统，这里称之为魔石系统（Magic Stone System）。
  * 支持空零碧的配魔法型和闪轨的回路直接附带魔法型。
- * 
- * ********** 兼容性说明 **********
- * 简单来说，这个插件中“魔石”和其他装备不是一套体系，因此和能定制装备属性的插件
- * 有冲突。比如VisuMZ_1_ItemsEquipsCore（装备核心）中所有写在装备栏的备注无法
- * 生效。这是因为我将魔石设置为了一种独立的装备栏，VisuMZ插件无法将其识别为装备，
- * 因此那些备注也就无法发挥作用。
- * 我个人认为装备核心的那些备注作用不算太大，基本上就是使原本只能乘算的特性（如
- * 属性抗性）变得能加算，或者使装备的基本参数能够利用JS实现动态加成等。MZ数据库
- * 自带的装备特性设置已经够用了。但如果上述冲突的功能对你的系统很重要，那么建议不
- * 使用这个插件，或者自行实现一些适用于魔石属性修改的NOTETAG。
  * 
  * ********** 系统简介 **********
  * 每名角色会拥有数个可装备“魔石”的新装备槽。以某个魔石槽为共同起点，这些魔石会组
@@ -399,11 +390,29 @@ Alderpaw.magicTable = JSON.parse(magicStone_parameters['magicTable']) || [];
 // ** PLUGIN COMMANDS
 //=============================================================================
 PluginManager.registerCommand("Alderpaw_MagicStone", 'equipMagicStone', args => {
-    console.log(args);
-    const actor = $gameActors.actor(args.actorId);
-    if (actor) {
-      actor.battleVoices = null;
+    const actor = $gameActors.actor(+args.actorId);
+    const slotId = +args.slotId;
+    const magicStoneId = +args.magicStoneId;
+    const item = $dataArmors[magicStoneId];
+    if (actor && slotId < actor._magicSlotNum && actor._magicSlotEnabledList[slotId] && actor.canEquipMagicStone(item, slotId)) {
+        actor.changeMagicStone(slotId, item);
     }
+});
+
+PluginManager.registerCommand("Alderpaw_MagicStone", 'unequipMagicStone', args => {
+    const actor = $gameActors.actor(+args.actorId);
+    const slotId = +args.slotId;
+    if (actor && slotId < actor._magicSlotNum) {
+        actor.changeMagicStone(slotId, null);
+    }
+});
+
+PluginManager.registerCommand("Alderpaw_MagicStone", 'enableMagicStoneMenu', args => {
+    $gameSystem.setEnableMagicStoneMenu();
+});
+
+PluginManager.registerCommand("Alderpaw_MagicStone", 'disableMagicStoneMenu', args => {
+    $gameSystem.setDisableMagicStoneMenu();
 });
 
 
@@ -638,208 +647,17 @@ Game_Actor = class extends Game_Actor {
         }
         return value;
     };
+
+    traitObjects() {
+        const objects = super.traitObjects();
+        for (const item of this.magicStones()) {
+            if (item) {
+                objects.push(item);
+            }
+        }
+        return objects;
+    };
 }
-
-// const _alderpaw_magicStone_gameActor_setup = Game_Actor.prototype.setup;
-// Game_Actor.prototype.setup = function(actorId) {
-//     _alderpaw_magicStone_gameActor_setup.call(this, actorId);
-//     /* 解析插件参数 */
-//     /* 独立于equipSlot，新建一批magicSlot */
-//     const allActorMagicSlotConfigList = Alderpaw.actorMagicSlotConfigs;
-//     for (const magicSlotConfig of allActorMagicSlotConfigList) {
-//         const magicSlotConfigItem = JSON.parse(magicSlotConfig);
-//         if (actorId == magicSlotConfigItem.actorId) {
-//             console.log(JSON.parse(magicSlotConfigItem.magicLines));
-//             this._lineElementPoints = [];   //每条链的元素点数，每一项是一个元素ID->元素点数的字典
-//             this._magicSlotNum = parseInt(magicSlotConfigItem.magicSlotNum);
-//             this._magicLines = JSON.parse(magicSlotConfigItem.magicLines);
-//             this._magicSlotElementTypeList = JSON.parse(magicSlotConfigItem.magicSlotElementTypeList).map(Number);
-//             this._magicSlotEnabledList = JSON.parse(magicSlotConfigItem.magicSlotEnabledList).map(Number);
-//             this._magicSlotCostList = JSON.parse(magicSlotConfigItem.magicSlotCostList);
-//             this._magicSlotMpIncreaseList = JSON.parse(magicSlotConfigItem.magicSlotMpIncreaseList).map(Number);
-//             for (let i = 0; i < this._magicLines.length; i++) {
-//                 let currentLineElementPointItem = {};
-//                 for (const strValidElementItem of Alderpaw.validElementItems) {
-//                     const validElementItem = JSON.parse(strValidElementItem);
-//                     currentLineElementPointItem[validElementItem.elementId.toString()] = 0;
-//                 }
-//                 this._lineElementPoints.push(currentLineElementPointItem);
-//             }
-//             this.initMagicStones(new Array(this._magicSlotNum).fill(0));
-//         }
-//     }
-// }
-
-// Game_Actor.prototype.isMagicSlotChangeOk = function(slotId) {
-//     return (
-//         !this.isEquipTypeLocked(this.magicSlots()[slotId]) &&
-//         !this.isEquipTypeSealed(this.magicSlots()[slotId]) &&
-//         this._magicSlotEnabledList[slotId]
-//     );
-// };
-
-// Game_Actor.prototype.canEquipMagicStone = function(item, slotId) {
-//     if (!item) {
-//         return false;
-//     }
-//     if ((slotId > 0 || (slotId === 0 && !Alderpaw.isCoreMagicStoneUsed)) && item.etypeId !== Alderpaw.magicStoneEtypeId) {
-//         return false;
-//     }
-//     if (slotId === 0 && Alderpaw.isCoreMagicStoneUsed && item.etypeId !== Alderpaw.coreMagicStoneEtypeId) {
-//         return false;
-//     }
-//     //不满足属性限定孔
-//     if (this._magicSlotElementTypeList[slotId] > 0 && this._magicSlotElementTypeList[slotId] != parseInt(item.meta["Base Element Id"])) {
-//         return false;
-//     }
-//     //一条链上不能装备2个相同的
-//     const magicStones = this.magicStones();
-//     let lineIndex = 0;
-//     for (let i = 0; i < this._magicLines.length; i++) {
-//         if (this._magicLines[i].includes(slotId)) {
-//             lineIndex = i;
-//             break;
-//         }
-//     }
-//     for (const lineSlotId of this._magicLines[lineIndex]) {
-//         if (lineSlotId !== slotId && magicStones[lineSlotId] != null && magicStones[lineSlotId].id === item.id) {
-//             return false;
-//         }
-//     }
-//     return this.canEquipArmor(item);
-// };
-
-// Game_Actor.prototype.changeMagicStone = function(slotId, item) {
-//     const previousItem = this.equips()[slotId];
-//     if (
-//         this.tradeItemWithParty(item, this.magicStones()[slotId]) &&
-//         (!item || this.magicSlots()[slotId] === item.etypeId)
-//     ) {
-//         this._magicStones[slotId].setObject(item);
-//         this.refresh();
-//     }
-//     //遗忘之前装备上的魔法
-//     if (previousItem != null) {
-//         if (previousItem.meta["Attached Magics"]) {
-//             let skill_ids_and_levels = previousItem.meta["Attached Magics"].split(",");
-//             for (let i = 0; i < skill_ids_and_levels.length; i += 2) {
-//                 let skill_id = parseInt(skill_ids_and_levels[i]);
-//                 let level = parseInt(skill_ids_and_levels[i + 1]);
-//                 if (this.level >= level) {
-//                     this.forgetSkill(skill_id);
-//                 }
-//             }
-//         }
-//     }
-//     //学会新装备上的魔法
-//     if (item != null) {
-//         if (item.meta["Attached Magics"]) {
-//             let skill_ids_and_levels = item.meta["Attached Magics"].split(",");
-//             for (let i = 0; i < skill_ids_and_levels.length; i += 2) {
-//                 let skill_id = parseInt(skill_ids_and_levels[i]);
-//                 let level = parseInt(skill_ids_and_levels[i + 1]);
-//                 if (this.level >= level) {
-//                     console.log(skill_id, level);
-//                     this.learnSkill(skill_id);
-//                 }
-//             }
-//         }
-//     }
-// };
-
-// //升级时可能学会魔法
-// const _alderpaw_magicStone_gameActor_levelUp = Game_Actor.prototype.levelUp;
-// Game_Actor.prototype.levelUp = function() {
-//     _alderpaw_magicStone_gameActor_levelUp.call(this);
-//     for (const item of this.magicStones()) {
-//         if (item != null) {
-//             if (item.meta["Attached Magics"]) {
-//                 let skill_ids_and_levels = item.meta["Attached Magics"].split(",");
-//                 for (let i = 0; i < skill_ids_and_levels.length; i += 2) {
-//                     let skill_id = parseInt(skill_ids_and_levels[i]);
-//                     let level = parseInt(skill_ids_and_levels[i + 1]);
-//                     if (this.level >= level) {
-//                         this.learnSkill(skill_id);
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }
-
-// Game_Actor.prototype.forceChangeMagicStone = function(slotId, item) {
-//     this._magicStones[slotId].setObject(item);
-//     this.releaseUnequippableMagicStones(true);
-//     this.refresh();
-// };
-
-// Game_Actor.prototype.releaseUnequippableMagicStones= function(forcing) {
-//     for (;;) {
-//         let slots = this.magicSlots();
-//         let magicStones = this.magicStones();
-//         let changed = false;
-//         for (let i = 0; i < magicStones.length; i++) {
-//             let item = magicStones[i];
-//             if (item && (!this.canEquip(item) || item.etypeId !== slots[i])) {
-//                 if (!forcing) {
-//                     this.tradeItemWithParty(null, item);
-//                 }
-//                 this._magicStones[i].setObject(null);
-//                 changed = true;
-//             }
-//         }
-//         if (!changed) {
-//             break;
-//         }
-//     }
-// };
-
-// Game_Actor.prototype.initMagicStones = function(magicStones) {
-//     const slots = this.magicSlots();
-//     const maxSlots = slots.length;
-//     this._magicStones = [];
-//     for (let i = 0; i < maxSlots; i++) {
-//         this._magicStones[i] = new Game_Item();
-//     }
-//     for (let j = 0; j < magicStones.length; j++) {
-//         if (j < maxSlots) {
-//             this._magicStones[j].setEquip(slots[j] === 1, magicStones[j]);
-//         }
-//     }
-//     this.releaseUnequippableMagicStones(true);
-//     this.refresh();
-// };
-
-// Game_Actor.prototype.magicStones = function() {
-//     if (this._magicStones) {
-//         return this._magicStones.map(item => item.object());
-//     }
-//     return [];
-// };
-
-// Game_Actor.prototype.magicSlots = function() {
-//     let slots = [];
-//     for (let i = 0; i < this._magicSlotNum; i++) {
-//         if (i == 0 && Alderpaw.isCoreMagicStoneUsed) {
-//             slots.push(Alderpaw.coreMagicStoneEtypeId);
-//         }
-//         else {
-//             slots.push(Alderpaw.magicStoneEtypeId);
-//         }
-//     }
-//     return slots;
-// };
-
-// const _alderpaw_magicStone_gameActor_paramPlus = Game_Actor.prototype.paramPlus;
-// Game_Actor.prototype.paramPlus = function(paramId) {
-//     let value = _alderpaw_magicStone_gameActor_paramPlus.call(this, paramId);
-//     for (const item of this.magicStones()) {
-//         if (item) {
-//             value += item.params[paramId];
-//         }
-//     }
-//     return value;
-// };
 
 
 //=============================================================================
@@ -1710,7 +1528,7 @@ class Window_MagicStoneStatus extends Window_StatusBase {
             this.drawText(this._actor.param(paramId), x, y, paramWidth, "right");
         }
         else {
-            this.drawText((this._actor.xparam(paramId - 8) * 100).toString() + "%", x, y, paramWidth, "right");
+            this.drawText(parseInt(this._actor.xparam(paramId - 8) * 100).toString() + "%", x, y, paramWidth, "right");
         }
     }
 
@@ -1728,8 +1546,8 @@ class Window_MagicStoneStatus extends Window_StatusBase {
             diffValue = newValue - this._actor.param(paramId);
         }
         else {
-            newValue = (this._tempActor.xparam(paramId - 8) * 100).toString() + "%";
-            diffValue = ((newValue - this._actor.xparam(paramId - 8)) * 100).toString() + "%";
+            newValue = parseInt(this._tempActor.xparam(paramId - 8) * 100).toString() + "%";
+            diffValue = parseInt((newValue - this._actor.xparam(paramId - 8)) * 100).toString() + "%";
         }
         this.changeTextColor(ColorManager.paramchangeTextColor(diffValue));
         this.drawText(newValue, x, y, paramWidth, "right");
