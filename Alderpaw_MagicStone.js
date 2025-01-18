@@ -25,9 +25,9 @@
  * 
  * @param isCoreMagicStoneUsed
  * @text 是否启用核心魔石
- * @desc 若启用核心魔石，则0号魔石槽固定为“核心魔石”装备类型。用于构筑类似闪轨的导力器系统。
+ * @desc 若启用核心魔石，则0号魔石槽固定为“核心魔石”装备类型。这样可以允许在中心槽位装备更强大的独特魔石。
  * @type boolean
- * @default true
+ * @default false
  * @parent magicEquipSettingParent
  *
  * @param magicSystemSettingParent
@@ -42,8 +42,8 @@
  * @parent magicSystemSettingParent
  * 
  * @param isMagicSystemEnabled
- * @text 主菜单添加魔石系统
- * @desc 魔石系统是否添加到主菜单。只影响开局时的可用性，后面可以使用插件指令随意开关。
+ * @text 主菜单启用魔石系统
+ * @desc 魔石系统是否启用。只影响开局时的可用性，后面可以使用插件指令随意开关。
  * @type boolean
  * @default true
  * @parent magicSystemSettingParent
@@ -62,6 +62,20 @@
  * @default true
  * @parent magicSystemSettingParent
  * 
+ * @param isInnerUnlockEnabled
+ * @text 是否支持菜单内解锁魔石槽
+ * @desc 是否支持直接在菜单内解锁魔石槽，消耗的材料在插件参数中指定。即使这一项选否，插件参数里的魔石解锁消耗也必须按要求填上。
+ * @type boolean
+ * @default true
+ * @parent magicSystemSettingParent
+ * 
+ * @param isOrderUnlockRequired
+ * @text 是否必须按顺序解锁魔石槽
+ * @desc 选true时一条链上的魔石槽必须按从中心到最远处的顺序来解锁，否则无限制。仅适用于菜单内解锁的场景。
+ * @type boolean
+ * @default true
+ * @parent magicSystemSettingParent
+ * 
  * @param validElementItems
  * @text 参与本系统的元素
  * @desc 数据库中哪些元素会参与本系统的计算？例如有时游戏中会有不参与魔法系统的“物理”属性，需要排除。
@@ -71,7 +85,7 @@
  * 
  * @param magicTable
  * @text 魔法表设置
- * @desc 只有配魔法系统需要，使用闪轨型系统时这个参数不用填。
+ * @desc 只有使用配魔法系统时需要填。
  * @type struct<magicIngredient>[]
  * @default []
  * @parent magicSystemSettingParent
@@ -99,6 +113,30 @@
  * @type icon
  * @default 0
  * @parent magicSlotLineSettingParent
+ * 
+ * @param magicStoneTerms
+ * @text 术语定义
+ * 
+ * @param openMagicTableText
+ * @text 提示打开魔法表
+ * @desc 魔石界面中用于提示玩家打开魔法表的文本内容。
+ * @type string
+ * @default 按Tab键查看魔法表
+ * @parent magicStoneTerms
+ * 
+ * @param switchMagicListText
+ * @text 提示查看当前魔法
+ * @desc 魔石界面中用于提示玩家查看当前角色已有魔法的文本。
+ * @type string
+ * @default 按ctrl键查看当前魔法
+ * @parent magicStoneTerms
+ * 
+ * @param magicLineText
+ * @text 魔石链界面的标题
+ * @desc 魔石链界面的标题文本。
+ * @type string
+ * @default 魔石驱动器
+ * @parent magicStoneTerms
  * 
  * @command equipMagicStone
  * @text 装备魔石
@@ -138,10 +176,26 @@
  * @type number
  * @default 0
  * 
+ * @command unlockMagicSlot
+ * @text 解锁一个魔石槽位
+ * @desc 解锁第x号魔石槽。不需要材料，强制解锁，可用于在事件中根据自定义条件解锁魔石槽。
+ *
+ * @arg actorId
+ * @text 角色ID
+ * @desc 角色在数据库中的ID。
+ * @type number
+ * @default 1
+ * 
+ * @arg slotId
+ * @text 魔石槽ID
+ * @desc 魔石槽ID，从0开始到N-1（N为魔石槽数量）。
+ * @type number
+ * @default 0
+ * 
  * @command enableMagicStoneMenu
  * @text 启用魔石界面菜单
  * @desc 使魔石系统在主菜单界面变得可用。
- *
+ *            
  * @command disableMagicStoneMenu
  * @text 禁用魔石界面菜单
  * @desc 使魔石系统在主菜单界面变得不可用。
@@ -189,8 +243,7 @@
  * 石槽只能装备核心魔石。
  * 
  * 2. 魔石界面设定
- * 可以选择将魔石系统直接添加到主菜单中。但如果你使用了VisuMZ_1_MainMenuCore.js插件，
- * 则不会起效果，请自行在VisuMZ插件参数里设置添加Scene_MagicStone到Main Menu。
+ * 可以选择让魔石系统直接在主菜单中可用，也可以游戏中用插件指令启用。
  * 
  * 3. 魔石系统设定
  * （1）选择一种技能类型，本插件会将其视作魔法，其他类型的技能不会参与处理。例如，即
@@ -218,6 +271,7 @@
  * 一般来说越深的魔石槽所需的解锁材料应该越多。注意设置时是和0~N-1号魔石槽一一对应的。
  * （5）需要为每一个魔石槽设置解锁后它能提供给角色的MP上限加成。对于初始就已解锁的，其
  * 加成会直接生效。注意设置时是和0~N-1号魔石槽一一对应的。
+ * （6）每名角色至少要有1个魔石槽，否则会报错。
  * 
  * ********** NOTETAG **********
  * 为了实现系统功能，提供了以下写在装备备注栏的标签。
@@ -316,19 +370,19 @@
  * @text 元素属性ID
  * @type number
  * @default 1
- * @desc 魔石系统中启用的元素在数据库里的ID
+ * @desc 元素在数据库里的属性ID
  * 
  * @param elementIconId
  * @text 元素图标ID
  * @type number
  * @default 1
- * @desc 这个元素对应的图标ID
+ * @desc 元素对应的图标ID
  * 
  * @param elementColorId
- * @text 元素颜色ID
- * @type number
- * @default 1
- * @desc 这个元素对应的颜色ID，取值范围是0~31，对应于img/system/Window.png中右下角的那31种颜色。在画魔石槽边框时有用。
+ * @text 元素颜色十六进制码
+ * @type string
+ * @default #808080
+ * @desc 元素对应的十六进制颜色码，需要包含#号，在画魔石槽边框时有用。
  */
 
 /*~struct~magicIngredient:
@@ -370,6 +424,7 @@
 // ** PLUGIN PARAMETERS
 //=============================================================================
 var Alderpaw = Alderpaw || {}; 
+var Imported = Imported || {};
 
 const magicStone_parameters = PluginManager.parameters('Alderpaw_MagicStone');
 Alderpaw.magicStoneEtypeId = Number(magicStone_parameters['magicStoneEtypeId'] || 5);
@@ -384,6 +439,11 @@ Alderpaw.magicSlotLockIconId = Number(magicStone_parameters['magicSlotLockIconId
 Alderpaw.magicSlotArrowIconId = Number(magicStone_parameters['magicSlotArrowIconId']);
 Alderpaw.magicSkillTypeId = Number(magicStone_parameters['magicSkillTypeId']);
 Alderpaw.magicTable = JSON.parse(magicStone_parameters['magicTable']) || [];
+Alderpaw.isInnerUnlockEnabled = magicStone_parameters["isInnerUnlockEnabled"] == "true" || false;
+Alderpaw.isOrderUnlockRequired = magicStone_parameters["isOrderUnlockRequired"] == "true" || false;
+Alderpaw.openMagicTableText = magicStone_parameters["openMagicTableText"];
+Alderpaw.switchMagicListText = magicStone_parameters["switchMagicListText"];
+Alderpaw.magicLineText = magicStone_parameters["magicLineText"];
 
 
 //=============================================================================
@@ -415,6 +475,17 @@ PluginManager.registerCommand("Alderpaw_MagicStone", 'disableMagicStoneMenu', ar
     $gameSystem.setDisableMagicStoneMenu();
 });
 
+PluginManager.registerCommand("Alderpaw_MagicStone", 'unlockMagicSlot', args => {
+    const actor = $gameActors.actor(+args.actorId);
+    const slotId = +args.slotId;
+    if (actor && slotId < actor._magicSlotNum) {
+        const mpIncreased = actor._magicSlotMpIncreaseList[slotId];
+        actor._magicSlotEnabledList[slotId] = 1;
+        actor.addParam(1, mpIncreased);
+        actor.gainMp(mpIncreased);
+    }
+});
+
 
 //=============================================================================
 // ** 系统级修改
@@ -440,8 +511,20 @@ Game_System.prototype.isMagicStoneMenuEnabled = function() {
 const _alerpaw_magicStone_windowMenuCommand_addMainCommands = Window_MenuCommand.prototype.addMainCommands;
 Window_MenuCommand.prototype.addMainCommands = function() {
     _alerpaw_magicStone_windowMenuCommand_addMainCommands.call(this);
-    if (!Imported.VisuMZ_1_MainMenuCore) {
-        this.addCommand(Alderpaw.magicStoneCommandName, "magicStone", $gameSystem.isMagicStoneMenuEnabled());
+    this.addCommand(Alderpaw.magicStoneCommandName, "magicStone", $gameSystem.isMagicStoneMenuEnabled());
+};
+
+const _alderpaw_magicStone_sceneMenu_createCommandWindow = Scene_Menu.prototype.createCommandWindow;
+Scene_Menu.prototype.createCommandWindow = function() {
+    _alderpaw_magicStone_sceneMenu_createCommandWindow.call(this);
+    this._commandWindow.setHandler("magicStone", this.commandPersonal.bind(this));
+};
+
+const _alderpaw_magicStone_sceneMenu_onPersonalOk = Scene_Menu.prototype.onPersonalOk;
+Scene_Menu.prototype.onPersonalOk = function() {
+    _alderpaw_magicStone_sceneMenu_onPersonalOk.call(this);
+    if (this._commandWindow.currentSymbol() === "magicStone") {
+        SceneManager.push(Scene_MagicStone);
     }
 };
 
@@ -458,7 +541,7 @@ Game_Actor = class extends Game_Actor {
         for (const magicSlotConfig of allActorMagicSlotConfigList) {
             const magicSlotConfigItem = JSON.parse(magicSlotConfig);
             if (actorId == magicSlotConfigItem.actorId) {
-                console.log(JSON.parse(magicSlotConfigItem.magicLines));
+                // console.log(JSON.parse(magicSlotConfigItem.magicLines));
                 this._lineElementPoints = [];   //每条链的元素点数，每一项是一个元素ID->元素点数的字典
                 this._magicSlotNum = parseInt(magicSlotConfigItem.magicSlotNum);
                 this._magicLines = JSON.parse(magicSlotConfigItem.magicLines);
@@ -548,7 +631,6 @@ Game_Actor = class extends Game_Actor {
                     let skill_id = parseInt(skill_ids_and_levels[i]);
                     let level = parseInt(skill_ids_and_levels[i + 1]);
                     if (this.level >= level) {
-                        console.log(skill_id, level);
                         this.learnSkill(skill_id);
                     }
                 }
@@ -669,7 +751,7 @@ class Scene_MagicStone extends Scene_MenuBase {
         if (Input.isTriggered("control")) {
             this.showOrHideMagicListWindow();
         }
-        if (Input.isTriggered("tab")) {
+        if (Alderpaw.isElementPointBasedMagic && Input.isTriggered("tab")) {
             if (this._slotWindow && this._slotWindow.active && !this._magicTableWindow.visible) {
                 this.showMagicTable();
                 SoundManager.playOk();
@@ -706,6 +788,9 @@ class Scene_MagicStone extends Scene_MenuBase {
     createLineValueWindow() {
         const rect = this.lineValueWindowRect();
         this._lineValueWindow = new Window_LineValue(rect);
+        if (!Alderpaw.isElementPointBasedMagic) {
+            this._lineValueWindow.hide();
+        }
         this.addWindow(this._lineValueWindow);
     }
 
@@ -761,10 +846,19 @@ class Scene_MagicStone extends Scene_MenuBase {
     };
     
     magicSlotWindowRect() {
-        const wx = Graphics.boxWidth * 0.3;
-        const wy = this.mainAreaTop();
-        const ww = Graphics.boxWidth * 0.4;
-        const wh = this.mainAreaHeight() * 0.7;
+        let wx, wy, ww, wh;
+        if (Alderpaw.isElementPointBasedMagic) {
+            wx = Graphics.boxWidth * 0.3;
+            wy = this.mainAreaTop();
+            ww = Graphics.boxWidth * 0.4;
+            wh = this.mainAreaHeight() * 0.7;
+        }
+        else {
+            wx = Graphics.boxWidth * 0.3;
+            wy = this.mainAreaTop();
+            ww = Graphics.boxWidth * 0.4;
+            wh = this.mainAreaHeight();
+        }
         return new Rectangle(wx, wy, ww, wh);
     }
     
@@ -873,30 +967,30 @@ class Scene_MagicStone extends Scene_MenuBase {
         this._slotWindow.setActor(actor);
         this._itemWindow.setActor(actor);
         this._lineValueWindow.setActor(actor);
-        this._orbmentWindow.setActor(actor);
+        this.refreshActorMagics();
         this._magicListWindow.setActor(actor);
+        this._orbmentWindow.setActor(actor);
     };
 
     nextActor() {
         $gameParty.makeMenuActorNext();
         this.updateActor();
         this.onActorChange();
-        this.refreshActor();
-        this._slotWindow.activate();
-        this._slotWindow.select(0);
     };
     
     previousActor() {
         $gameParty.makeMenuActorPrevious();
         this.updateActor();
         this.onActorChange();
-        this.refreshActor();
-        this._slotWindow.activate();
-        this._slotWindow.select(0);
     };
     
     onActorChange() {
         SoundManager.playCursor();
+        this.refreshActor();
+        this._slotWindow.activate();
+        this._slotWindow.select(0);
+        this._itemWindow.hide();
+        this._itemWindow.deselect();
     };
 
     openUnlockWindow() {
@@ -914,12 +1008,30 @@ class Scene_MagicStone extends Scene_MenuBase {
 
     onUnlockConfirm() {
         const actor = this.actor();
-        const mpIncreased = actor._magicSlotMpIncreaseList[this._slotWindow.index()];
+        const slotId = this._slotWindow.index();
+        const mpIncreased = actor._magicSlotMpIncreaseList[slotId];
+        let isPreviousSlotUnlocked = true;
+        if (Alderpaw.isOrderUnlockRequired) {
+            for (let lineIndex = 0; lineIndex < actor._magicLines.length; lineIndex++) {
+                for (let j = 1; j < actor._magicLines[lineIndex].length; j++) {
+                    if (slotId === actor._magicLines[lineIndex][j] && !actor._magicSlotEnabledList[actor._magicLines[lineIndex][j - 1]]) {
+                        isPreviousSlotUnlocked = false;
+                        break;
+                    }
+                }
+            }
+            if (!isPreviousSlotUnlocked) {
+                this._helpWindow.setText("必须按顺序解锁魔石槽，该条链的上一个魔石槽未解锁！");
+                SoundManager.playBuzzer();
+                this._unlockConfirmWindow.activate();
+                return;
+            }
+        }
         if (this._currentUnlockItemNum >= this._needUnlockItemNum) {
             $gameParty.gainItem($dataItems[this._unlockItemId], -this._needUnlockItemNum);
             SoundManager.playEquip();
             //解锁槽位，增加MP上限
-            actor._magicSlotEnabledList[this._slotWindow.index()] = 1;
+            actor._magicSlotEnabledList[slotId] = 1;
             actor.addParam(1, mpIncreased);
             actor.gainMp(mpIncreased);
             this._unlockConfirmWindow.hide();
@@ -1101,18 +1213,25 @@ class Window_MagicList extends Window_StatusBase {
         }
         this.contents.clear();
         const nameRect = this.itemLineRect(0);
+        const maxRows = Math.floor((this.innerHeight - 2 * this.lineHeight()) / this.lineHeight());
+        const maxDisplayNum = maxRows * 2;
         this.drawActorName(this._actor, nameRect.x, 0, nameRect.width);
-        let num = 0;
-        for (let i = 0; i < this._actor.skills().length; i++) {
+        for (let i = 0; i < Math.min(maxDisplayNum, this._actor.skills().length); i++) {
             const skill = this._actor.skills()[i];
             if (skill.stypeId === Alderpaw.magicSkillTypeId) {
                 const skillIconId = skill.iconIndex;
                 const skillName = skill.name;
-                this.drawTextEx(`\\I[${skillIconId}]${skillName}`, 
-                                this.itemPadding() + (this.innerWidth / 2) * (num % 2), 
-                                this.lineHeight() * (Math.floor(num / 2) + 1.5), 
-                                (this.innerWidth - 2 * this.itemPadding()) / 2);
-                num++;
+                if (i < maxDisplayNum - 2 || this._actor.skills().length <= maxDisplayNum) {
+                    this.drawTextEx(`\\I[${skillIconId}]${skillName}`, 
+                        this.itemPadding() + (this.innerWidth / 2) * (i % 2), 
+                        this.lineHeight() * (Math.floor(i / 2) + 1.5), 
+                        (this.innerWidth - 2 * this.itemPadding()) / 2);
+                }
+                else {
+                    this.drawText("......", this.itemPadding() + (this.innerWidth / 2) * (i % 2), 
+                                  this.lineHeight() * (Math.floor(i / 2) + 1.5), 
+                                  (this.innerWidth - 2 * this.itemPadding()) / 2);
+                }
             }
         }
         this.changeTextColor(ColorManager.textColor(2));
@@ -1163,7 +1282,7 @@ class Window_LineValue extends Window_Base {
     //玩家在某个槽位选择某个想要装备的魔石时，展示装备后链条属性值会产生的变化
     //需要把每条链的情况记录下来，更新角色可用的魔法 [{"elementId": elementPoint, ......}, ......]
     refresh(selectedSlotId=undefined, selectedMagicStone=undefined) {
-        if (!this._actor) {
+        if (!this._actor || !Alderpaw.isElementPointBasedMagic) {
             return;
         }
 
@@ -1181,36 +1300,40 @@ class Window_LineValue extends Window_Base {
                 const elementItem = JSON.parse(Alderpaw.validElementItems[j]);
                 const elementId = parseInt(elementItem.elementId);
                 const lineMagicSlots = this._actor._magicLines[i];
-                let lineElementPointsTotal = 0;
-                let predictElementPointsTotal = 0;
+                //第i条链的第j个元素的点数总和
+                let currentElementPointsOnLine = 0;
+                //选中的这件装备的第j个元素点数
+                let predictElementPointsOnLine = 0;
                 for (const slotId of lineMagicSlots) {
                     const item = this._actor.magicStones()[slotId];
                     if (item && item.meta["Element Points"]) {
                         const elementPointMapping = JSON.parse(item.meta["Element Points"]);
-                        for (const strElementId in elementPointMapping) {
-                            if (parseInt(strElementId) === elementId) {
-                                lineElementPointsTotal += parseInt(elementPointMapping[strElementId]);
-                            }
-                        }
-                    }
-                    //选中的这件魔石，无论是否可装备，都显示其会带来的影响
-                    if (selectedMagicStone && selectedMagicStone.meta["Element Points"] && selectedSlotId === slotId) {
-                        const elementPointMapping = JSON.parse(selectedMagicStone.meta["Element Points"]);
-                        for (const strElementId in elementPointMapping) {
-                            if (parseInt(strElementId) === elementId) {
-                                predictElementPointsTotal += parseInt(elementPointMapping[strElementId]);
+                        for (const tempElementId in elementPointMapping) {
+                            if (parseInt(tempElementId) === elementId) {
+                                currentElementPointsOnLine += parseInt(elementPointMapping[tempElementId]);
+                                if (slotId === selectedSlotId) {
+                                    predictElementPointsOnLine -= currentElementPointsOnLine;
+                                }
                             }
                         }
                     }
                 }
-                this._actor._lineElementPoints[i][elementId.toString()] = lineElementPointsTotal;
-                if (predictElementPointsTotal > 0) {
-                    this.changeTextColor(ColorManager.powerUpColor());
+                //选中的这件魔石，无论是否可装备，都显示其会带来的影响
+                if (selectedMagicStone && selectedMagicStone.meta["Element Points"]) {
+                    const elementPointMapping = JSON.parse(selectedMagicStone.meta["Element Points"]);
+                    for (const selectedItemElementId in elementPointMapping) {
+                        if (parseInt(selectedItemElementId) === elementId && lineMagicSlots.includes(selectedSlotId)) {
+                            predictElementPointsOnLine += parseInt(elementPointMapping[selectedItemElementId]);
+                        }
+                    }
                 }
-                this.drawText((lineElementPointsTotal + predictElementPointsTotal).toString(), 114 + (36 + this.itemPadding()) * j, this.itemPadding() + this.lineHeight() * (i + 1.7), 36);
-                if (predictElementPointsTotal > 0) {
-                    this.resetTextColor();
-                }
+
+                //设置玩家每条链上真实的属性点数
+                this._actor._lineElementPoints[i][elementId.toString()] = currentElementPointsOnLine;
+                //根据选中的魔石显示预测结果
+                this.changeTextColor(ColorManager.paramchangeTextColor(predictElementPointsOnLine));
+                this.drawText((currentElementPointsOnLine + predictElementPointsOnLine).toString(), 114 + (36 + this.itemPadding()) * j, this.itemPadding() + this.lineHeight() * (i + 1.7), 36);
+                this.resetTextColor();
             }
         }
     }
@@ -1226,7 +1349,7 @@ class Window_Orbment extends Window_Base {
         this._elementColorMapping = {};
         for (let j = 0; j < Alderpaw.validElementItems.length; j++) {
             const elementItem = JSON.parse(Alderpaw.validElementItems[j]);
-            this._elementColorMapping[elementItem.elementId.toString()] = parseInt(elementItem.elementColorId);
+            this._elementColorMapping[elementItem.elementId.toString()] = elementItem.elementColorId;
         }
     }
 
@@ -1285,7 +1408,7 @@ class Window_Orbment extends Window_Base {
 
         this.contents.clear();
         this.changeTextColor(ColorManager.systemColor());
-        this.drawText("魔石链条", 0, this.itemPadding(), this.innerWidth, "center");
+        this.drawText(Alderpaw.magicLineText, 0, this.itemPadding(), this.innerWidth, "center");
         this.resetTextColor();
         const slotHeight = 54;
         const slotWidth = 36;
@@ -1294,7 +1417,7 @@ class Window_Orbment extends Window_Base {
         let slotYPosList = [];
         for (const elementId of this._actor._magicSlotElementTypeList) {
             if (elementId === 0) {
-                slotColors.push(0);
+                slotColors.push("#808080");
             }
             else {
                 slotColors.push(this._elementColorMapping[elementId.toString()]);
@@ -1307,8 +1430,8 @@ class Window_Orbment extends Window_Base {
         const radiusX = 120;  // 水平半径
         const radiusY = 180;  // 垂直半径
         // 绘制中心魔石槽矩形
-        this.drawRectFrame(centerX - slotWidth / 2, centerY - slotHeight / 2, slotWidth, slotHeight, ColorManager.textColor(slotColors[0]));
-        this.drawRectFrame(centerX - slotWidth / 2 + 2, centerY - slotHeight / 2 + 2, slotWidth - 4, slotHeight - 4, ColorManager.textColor(slotColors[0]));
+        this.drawRectFrame(centerX - slotWidth / 2, centerY - slotHeight / 2, slotWidth, slotHeight, slotColors[0]);
+        this.drawRectFrame(centerX - slotWidth / 2 + 2, centerY - slotHeight / 2 + 2, slotWidth - 4, slotHeight - 4, slotColors[0]);
         slotXPosList.push(centerX - slotWidth / 2);
         slotYPosList.push(centerY - slotHeight / 2);
         // 绘制外围的 N 个矩形，最中间是0号魔石槽，右边是1号魔石槽，然后顺时针排布编号
@@ -1318,7 +1441,7 @@ class Window_Orbment extends Window_Base {
             const y = centerY + radiusY * Math.sin(angle) - slotHeight / 2; 
             slotXPosList.push(x);
             slotYPosList.push(y);
-            this.drawRectFrame(x, y, slotWidth, slotHeight, ColorManager.textColor(slotColors[i + 1]));
+            this.drawRectFrame(x, y, slotWidth, slotHeight, slotColors[i + 1]);
         }
 
         //画连接线
@@ -1374,10 +1497,11 @@ class Window_Orbment extends Window_Base {
                 this.drawIcon(magicStone.iconIndex, slotXPosList[i] + (slotWidth - ImageManager.iconWidth) / 2, slotYPosList[i] + (slotHeight - ImageManager.iconHeight) / 2);
             }
         }
-
-        this.changeTextColor(ColorManager.textColor(2));
-        this.drawText("按Tab键查看魔法表", 0, this.innerHeight - this.lineHeight(), this.innerWidth - this.itemPadding(), "right");
-        this.resetTextColor();
+        if (Alderpaw.isElementPointBasedMagic) {
+            this.changeTextColor(ColorManager.textColor(2));
+            this.drawText(Alderpaw.openMagicTableText, 0, this.innerHeight - this.lineHeight(), this.innerWidth - this.itemPadding(), "right");
+            this.resetTextColor();
+        }
     }
 }
 
@@ -1395,7 +1519,7 @@ class Window_MagicSlotUnlock extends Window_HorzCommand {
     }
 
     select(index) {
-        if (index !== this.index() && SceneManager._scene._helpWindow) {
+        if (index !== this.index() && SceneManager._scene._helpWindow && SceneManager._scene._unlockRequirementText) {
             SceneManager._scene._helpWindow.setText(SceneManager._scene._unlockRequirementText);
         }
         super.select(index);
@@ -1486,7 +1610,7 @@ class Window_MagicStoneStatus extends Window_StatusBase {
             this.drawItem(x, y, i);
         }
         this.changeTextColor(ColorManager.textColor(2));
-        this.drawText("按Ctrl键查看当前魔法", 0, this.innerHeight - this.lineHeight(), this.innerWidth - this.itemPadding(), "right");
+        this.drawText(Alderpaw.switchMagicListText, 0, this.innerHeight - this.lineHeight(), this.innerWidth - this.itemPadding(), "right");
         this.resetTextColor();
     }
 
@@ -1547,9 +1671,9 @@ class Window_MagicStoneStatus extends Window_StatusBase {
         }
         else {
             newValue = parseInt(this._tempActor.xparam(paramId - 8) * 100).toString() + "%";
-            diffValue = parseInt((newValue - this._actor.xparam(paramId - 8)) * 100).toString() + "%";
+            diffValue = parseInt(parseInt(newValue) - this._actor.xparam(paramId - 8) * 100).toString() + "%";
         }
-        this.changeTextColor(ColorManager.paramchangeTextColor(diffValue));
+        this.changeTextColor(ColorManager.paramchangeTextColor(parseInt(diffValue)));
         this.drawText(newValue, x, y, paramWidth, "right");
     }
 
@@ -1648,7 +1772,7 @@ class Window_MagicSlot extends Window_StatusBase {
             }
             //上锁的孔
             if (!this.isEnabled(index)) {
-                this.drawTextEx("未解锁", rect.x + rect.width / 2 - 36, rect.y, slotNameWidth, rect.height);
+                this.drawTextEx("未解锁", rect.x + slotNameWidth + ImageManager.iconWidth, rect.y, slotNameWidth, rect.height);
             }
             this.drawItemName(item, rect.x + slotNameWidth, rect.y, itemWidth);
             this.changePaintOpacity(true);
@@ -1669,7 +1793,7 @@ class Window_MagicSlot extends Window_StatusBase {
 
     processOk() {
         super.processOk();
-        if (!this.isCurrentItemEnabled()) {
+        if (!this.isCurrentItemEnabled() && Alderpaw.isInnerUnlockEnabled) {
             this.updateInputData();
             this.deactivate();
             SceneManager._scene.openUnlockWindow();
