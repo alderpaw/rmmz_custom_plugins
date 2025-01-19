@@ -265,28 +265,28 @@
 //=============================================================================
 var Alderpaw = Alderpaw || {}; 
 
-Alderpaw.parameters = PluginManager.parameters('Alderpaw_CtbBattleSystem');
-Alderpaw.ctbPosX = Number(Alderpaw.parameters["ctbPosX"] || 0);
-Alderpaw.ctbPosY = Number(Alderpaw.parameters["ctbPosY"] || 0);
-Alderpaw.ctbMaxShowNum = Number(Alderpaw.parameters['ctbMaxShowNum'] || 15);
-Alderpaw.ctbDelayStateId = Number(Alderpaw.parameters['ctbDelayStateId'] || 0);
-Alderpaw.ctbMagicBannedStateIds = Alderpaw.parameters['ctbMagicBannedStateIds'] || [];
-Alderpaw.ctbShowDelayPosition = Alderpaw.parameters["ctbShowDelayPosition"] === "false" ? false : true;
-Alderpaw.ctbShowDelayPopup = Alderpaw.parameters["ctbShowDelayPopup"] === "false" ? false : true;
-Alderpaw.ctbShowCancelCastPopup = Alderpaw.parameters["ctbShowCancelCastPopup"] === "false" ? false : true;
-Alderpaw.ctbCastAnimationId = Number(Alderpaw.parameters["ctbCastAnimationId"] || 0);
-Alderpaw.ctbCastAnimationTime = Number(Alderpaw.parameters["ctbCastAnimationTime"] || 120);
-Alderpaw.ctbIdleSkillId = Number(Alderpaw.parameters["ctbIdleSkillId"] || 8);
-Alderpaw.ctbGaugeBonusAppearPossibility = Number(Alderpaw.parameters["ctbGaugeBonusAppearPossibility"] || 0);
-Alderpaw.ctbGaugeBonusList = Alderpaw.parameters["ctbGaugeBonusList"] || [];
-Alderpaw.ctbShowAdvancePopup = Alderpaw.parameters["ctbShowAdvancePopup"] === "false" ? false : true;
-Alderpaw.ctbCurrentAnchorImg = Alderpaw.parameters["ctbCurrentAnchorImg"] || "anchor_current";
-Alderpaw.ctbPredictAnchorImg = Alderpaw.parameters["ctbPredictAnchorImg"] || "anchor_predict";
-Alderpaw.ctbLayoutMode = Alderpaw.parameters["ctbLayoutMode"] === "false" ? false : true;
-Alderpaw.ctbSBreakTriggerSE = Alderpaw.parameters["ctbSBreakTriggerSE"] || null;
-Alderpaw.ctbSBreakMinTP = Number(Alderpaw.parameters["ctbSBreakMinTP"] || 100);
-Alderpaw.ctbStartBonusNum = Number(Alderpaw.parameters["ctbStartBonusNum"] || 4);
-Alderpaw.ctbDelaySkillTypesByEquip = Alderpaw.parameters["ctbDelaySkillTypesByEquip"] || [0];
+const alderpawCtbParameters = PluginManager.parameters('Alderpaw_CtbBattleSystem');
+Alderpaw.ctbPosX = Number(alderpawCtbParameters["ctbPosX"] || 0);
+Alderpaw.ctbPosY = Number(alderpawCtbParameters["ctbPosY"] || 0);
+Alderpaw.ctbMaxShowNum = Number(alderpawCtbParameters['ctbMaxShowNum'] || 15);
+Alderpaw.ctbDelayStateId = Number(alderpawCtbParameters['ctbDelayStateId'] || 0);
+Alderpaw.ctbMagicBannedStateIds = alderpawCtbParameters['ctbMagicBannedStateIds'] || [];
+Alderpaw.ctbShowDelayPosition = alderpawCtbParameters["ctbShowDelayPosition"] === "false" ? false : true;
+Alderpaw.ctbShowDelayPopup = alderpawCtbParameters["ctbShowDelayPopup"] === "false" ? false : true;
+Alderpaw.ctbShowCancelCastPopup = alderpawCtbParameters["ctbShowCancelCastPopup"] === "false" ? false : true;
+Alderpaw.ctbCastAnimationId = Number(alderpawCtbParameters["ctbCastAnimationId"] || 0);
+Alderpaw.ctbCastAnimationTime = Number(alderpawCtbParameters["ctbCastAnimationTime"] || 120);
+Alderpaw.ctbIdleSkillId = Number(alderpawCtbParameters["ctbIdleSkillId"] || 8);
+Alderpaw.ctbGaugeBonusAppearPossibility = Number(alderpawCtbParameters["ctbGaugeBonusAppearPossibility"] || 0);
+Alderpaw.ctbGaugeBonusList = alderpawCtbParameters["ctbGaugeBonusList"] || [];
+Alderpaw.ctbShowAdvancePopup = alderpawCtbParameters["ctbShowAdvancePopup"] === "false" ? false : true;
+Alderpaw.ctbCurrentAnchorImg = alderpawCtbParameters["ctbCurrentAnchorImg"] || "anchor_current";
+Alderpaw.ctbPredictAnchorImg = alderpawCtbParameters["ctbPredictAnchorImg"] || "anchor_predict";
+Alderpaw.ctbLayoutMode = alderpawCtbParameters["ctbLayoutMode"] === "false" ? false : true;
+Alderpaw.ctbSBreakTriggerSE = alderpawCtbParameters["ctbSBreakTriggerSE"] || null;
+Alderpaw.ctbSBreakMinTP = Number(alderpawCtbParameters["ctbSBreakMinTP"] || 100);
+Alderpaw.ctbStartBonusNum = Number(alderpawCtbParameters["ctbStartBonusNum"] || 4);
+Alderpaw.ctbDelaySkillTypesByEquip = alderpawCtbParameters["ctbDelaySkillTypesByEquip"] || [0];
 //str转数字
 for (let i = 0; i < Alderpaw.ctbMagicBannedStateIds.length; i++) {
     Alderpaw.ctbMagicBannedStateIds[i] = parseInt(Alderpaw.ctbMagicBannedStateIds[i]);
@@ -1242,7 +1242,7 @@ Window_BattleItem.prototype.select = function(index) {
         }
 		if (item.meta["castST"] != null && !isInstantMagic) {
             if ((this.active || this.visible)) {
-                let castDelay = (100 * parseInt(item.meta["castST"]) * BattleManager._currentActor._castST_rate / BattleManager._currentActor.agi);
+                let castDelay = (100 * parseInt(item.meta["castST"]) * BattleManager._currentActor.castST_rate / BattleManager._currentActor.agi);
                 tempActor._actionTime += castDelay;
                 tempActor._actionTime = Math.floor(tempActor._actionTime)
                 tempActor._tpbState = "casting";
@@ -1255,7 +1255,7 @@ Window_BattleItem.prototype.select = function(index) {
                 if (item.meta["delayST"] != null) {
                     actionDelay = 100 * parseInt(item.meta["delayST"]) / BattleManager._currentActor.agi;
                     if (item.stypeId == 1) {    //战技
-                        actionDelay *= (BattleManager._currentActor._craft_delayST_rate);
+                        actionDelay *= (BattleManager._currentActor.craft_delayST_rate);
                     }
                 }
                 tempActor._actionTime += actionDelay;
@@ -1294,7 +1294,7 @@ Window_BattleSkill.prototype.select = function(index) {
         }
 		if (item.meta["castST"] != null && !isInstantMagic) {
             if ((this.active || this.visible)) {
-                let castDelay = (100 * parseInt(item.meta["castST"]) * BattleManager._currentActor._castST_rate / BattleManager._currentActor.agi);
+                let castDelay = (100 * parseInt(item.meta["castST"]) * BattleManager._currentActor.castST_rate / BattleManager._currentActor.agi);
                 tempActor._actionTime += castDelay;
                 tempActor._actionTime = Math.floor(tempActor._actionTime);
                 tempActor._tpbState = "casting";
@@ -1307,7 +1307,7 @@ Window_BattleSkill.prototype.select = function(index) {
                 if (item.meta["delayST"] != null) {
                     actionDelay = 100 * parseInt(item.meta["delayST"]) / BattleManager._currentActor.agi;
                     if (item.stypeId == 1) {    //战技
-                        actionDelay *= (BattleManager._currentActor._craft_delayST_rate);
+                        actionDelay *= (BattleManager._currentActor.craft_delayST_rate);
                     }
                 }
                 tempActor._actionTime += actionDelay;
@@ -1328,10 +1328,10 @@ Window_ActorCommand.prototype.select = function(index) {
     let tempActor = JsonEx.makeDeepCopy(this._actor);
     if (this._list[index].symbol === "attack") {
         if (this._actor._tpbState === "charged") {
-            let actionDelay = (100 * 100 * this._actor._craft_delayST_rate / this._actor.agi);
+            let actionDelay = (100 * 100 * this._actor.craft_delayST_rate / this._actor.agi);
             let attackSkill = $dataSkills[this._actor.attackSkillId()];
             if (attackSkill && attackSkill.meta && attackSkill.meta["delayST"]) {
-                actionDelay = (100 * attackSkill.meta["delayST"] * this._actor._craft_delayST_rate / this._actor.agi);
+                actionDelay = (100 * attackSkill.meta["delayST"] * this._actor.craft_delayST_rate / this._actor.agi);
             }
             tempActor._actionTime += actionDelay;
             tempActor._actionTime = Math.floor(tempActor._actionTime);
@@ -1407,7 +1407,7 @@ Window_BattleEnemy.prototype.select = function(index) {
         }
 		if (item.meta["castST"] != null && !isInstantMagic) {
             if ((this.active || this.visible)) {
-                let castDelay = (100 * parseInt(item.meta["castST"]) * BattleManager._currentActor._castST_rate / BattleManager._currentActor.agi);
+                let castDelay = (100 * parseInt(item.meta["castST"]) * BattleManager._currentActor.castST_rate / BattleManager._currentActor.agi);
                 tempActor._actionTime += castDelay;
                 tempActor._actionTime = Math.floor(tempActor._actionTime);
                 tempActor._tpbState = "casting";
@@ -1420,7 +1420,7 @@ Window_BattleEnemy.prototype.select = function(index) {
                 if (item.meta["delayST"] != null) {
                     actionDelay = 100 * parseInt(item.meta["delayST"]) / BattleManager._currentActor.agi;
                     if (item.stypeId == 1) {    //战技
-                        actionDelay *= (BattleManager._currentActor._craft_delayST_rate);
+                        actionDelay *= (BattleManager._currentActor.craft_delayST_rate);
                     }
                 }
                 tempActor._actionTime += actionDelay;
@@ -1493,7 +1493,7 @@ Window_BattleActor.prototype.select = function(index) {
         }
 		if (item.meta["castST"] != null && !isInstantMagic) {
             if ((this.active || this.visible)) {
-                let castDelay = (100 * parseInt(item.meta["castST"]) * BattleManager._currentActor._castST_rate / BattleManager._currentActor.agi);
+                let castDelay = (100 * parseInt(item.meta["castST"]) * BattleManager._currentActor.castST_rate / BattleManager._currentActor.agi);
                 tempActor._actionTime += castDelay;
                 tempActor._actionTime = Math.floor(tempActor._actionTime);
                 tempActor._tpbState = "casting";
@@ -1506,7 +1506,7 @@ Window_BattleActor.prototype.select = function(index) {
                 if (item.meta["delayST"] != null) {
                     actionDelay = 100 * parseInt(item.meta["delayST"]) / BattleManager._currentActor.agi;
                     if (item.stypeId == 1) {    //战技
-                        actionDelay *= (BattleManager._currentActor._craft_delayST_rate);
+                        actionDelay *= (BattleManager._currentActor.craft_delayST_rate);
                     }
                 }
                 tempActor._actionTime += actionDelay;
@@ -1713,7 +1713,7 @@ if (typeof Window_BattleGridSelectNode !== 'undefined') {
             }
             if (item.meta["castST"] != null && !isInstantMagic) {
                 if ((this.active || this.visible)) {
-                    let castDelay = (100 * parseInt(item.meta["castST"]) * BattleManager._currentActor._castST_rate / BattleManager._currentActor.agi);
+                    let castDelay = (100 * parseInt(item.meta["castST"]) * BattleManager._currentActor.castST_rate / BattleManager._currentActor.agi);
                     tempActor._actionTime += castDelay;
                     tempActor._actionTime = Math.floor(tempActor._actionTime);
                     tempActor._tpbState = "casting";
@@ -1725,7 +1725,7 @@ if (typeof Window_BattleGridSelectNode !== 'undefined') {
                 if (item.meta["delayST"] != null) {
                     actionDelay = 100 * parseInt(item.meta["delayST"]) / currentActor.agi;
                     if (item.stypeId == 1) {    //战技
-                        actionDelay *= (BattleManager._currentActor._craft_delayST_rate);
+                        actionDelay *= (BattleManager._currentActor.craft_delayST_rate);
                     }
                 }
                 tempActor._actionTime += actionDelay;
@@ -1844,6 +1844,7 @@ Game_Battler.prototype.initMembers = function() {
 	this._actionTime = 0;
     this._isReceivedBonus = false;
     this._anchorSelected = false;
+    this._shieldHp = 0;
 };
 
 //==============================
@@ -1898,7 +1899,7 @@ Game_Battler.prototype.startTpbCasting = function() {
                 isMagic = false;
             }
             else {
-                delay = Math.floor(100 * parseInt(notetag["castST"]) * this._castST_rate / this.agi);
+                delay = Math.floor(100 * parseInt(notetag["castST"]) * this.castST_rate / this.agi);
                 isMagic = true;
                 this._isReceivedBonus = false;
             }
@@ -1922,6 +1923,7 @@ Game_Battler.prototype.startTpbCasting = function() {
     }
     else {
         if (this._actionTime === 0) {
+            console.log(this.name() + "变成ready状态")
             this._tpbState = "ready";
         }
     }
@@ -1942,7 +1944,7 @@ Game_Battler.prototype.startTpbAction = function() {
         }
         let notetag = items[i].meta;
         if (notetag && notetag["delayST"] != null) {
-            tempDelay += parseInt(notetag["delayST"]) * this._craft_delayST_rate;
+            tempDelay += parseInt(notetag["delayST"]) * this.craft_delayST_rate;
             isDelayUpdated = true;
         }
         if (notetag && notetag["castST"] != null) {
@@ -2039,7 +2041,7 @@ Game_Battler.prototype.tpbRequiredCastTime = function() {
 	}
 	this._castST = isCastUpdated ? tempCastTime : 0;
 	//特殊：爆魔buff，魔法驱动时间-50%
-    return this._castST * 0.01 * this._castST_rate;
+    return this._castST * 0.01 * this.castST_rate;
 };
 
 Game_Battler.prototype.onTpbCharged = function() {
@@ -2119,7 +2121,6 @@ BattleManager.endBattlerActions = function(battler) {
         $scene._delayedSBreakActor = undefined;
     }
     else if ($scene._ctbGauge) {
-        console.log($gameTemp._currentActionDelay);
         battler._actionTime += $gameTemp._currentActionDelay;
         battler._actionTime = Math.floor(battler._actionTime);
         $scene._ctbGauge.refreshBattlers(null, true, battler);
@@ -2424,7 +2425,8 @@ Game_Action.prototype.setParalyzed = function() {
 };
 
 Game_Action.prototype.prepare = function() {
-    if (this.subject().isAppeared() && this.subject().restriction() === 4 && !this._forcing) {
+    const user = this.subject();
+    if (user.isAppeared() && user.restriction() === 4 && !this._forcing) {
         this.setParalyzed();
     }
 };
@@ -2484,11 +2486,19 @@ Game_BattlerBase.prototype.meetsSkillConditions = function(skill) {
 	return _alderpaw_ctb_gameBattlerBase_meetsSkillConditions.call(this, skill);
 };
 
-//对正在驱动魔法的敌人施加了封魔状态，则需要直接触发cancel cast效果
 const _alderpaw_ctb_gameBattler_addState = Game_Battler.prototype.addState;
 Game_Battler.prototype.addState = function(stateId) {
-    _alderpaw_ctb_gameBattler_addState.call(this, stateId);
+    //防护罩判定：如果本次试图添加的是不限次数、具有承伤上限的防护罩（黎轨的盾），则只有角色的_shieldHp小于这个防护罩提供的承伤上限时，才能添加成功
     const state = $dataStates[stateId];
+    if (state.meta["Shield Hp Value"]) {
+        const stateShieldValue = parseInt(state.meta["Shield Hp Value"]);
+        if (stateShieldValue <= this._shieldHp) {
+            return;
+        }
+        this._shieldHp = stateShieldValue;
+    }
+    _alderpaw_ctb_gameBattler_addState.call(this, stateId);
+    //对正在驱动魔法的敌人施加了封魔或者任何被控制的状态，则需要直接触发cancel cast效果
     if (Alderpaw.ctbMagicBannedStateIds.includes(stateId) || Alderpaw.ctbMagicBannedStateIds.includes(stateId.toString()) || state.restriction > 0) {
         if (this._tpbState === "casting") {
             this._tpbState = "charging";
@@ -2513,7 +2523,7 @@ Game_Action.prototype.itemCri = function(target) {
 };
 
 Game_Battler.prototype.gainHpReward = function(value) {
-    this.setTp(this.hp + value);
+    this.setHp(this.hp + value);
     let popup = new Sprite_Damage();
     //寻找当前target的位置
     if (this.isActor()) {
@@ -2522,19 +2532,32 @@ Game_Battler.prototype.gainHpReward = function(value) {
             popup.x = targetSprite.x + targetSprite.damageOffsetX();
             popup.y = targetSprite.y + targetSprite.damageOffsetY();
         }
-        popup.visible = true;
-        if (value >= 0) {
-            popup.createHpRecovery("+" + Math.abs(value) + " HP");
-        }
-        else {
-            popup.createHpDamage("-" + Math.abs(value) + " HP");
-        }
-        $scene._ctbGauge.addChild(popup);
     }
+    else {
+        let targetSprite = null;
+        for (sprite of $scene._spriteset._enemySprites) {
+            if (sprite._enemy != null && sprite._enemy.index() === this.index()) {
+                targetSprite = sprite;
+                break;
+            }
+        }
+        if (targetSprite != null) {
+            popup.x = targetSprite.x;
+            popup.y = targetSprite.y - 40;
+        }
+    }
+    popup.visible = true;
+    if (value >= 0) {
+        popup.createHpRecovery("+" + Math.abs(value) + " HP");
+    }
+    else {
+        popup.createHpDamage("-" + Math.abs(value) + " HP");
+    }
+    $scene._ctbGauge.addChild(popup);
 };
 
 Game_Battler.prototype.gainMpReward = function(value) {
-    this.setTp(this.mp + value);
+    this.setMp(this.mp + value);
     let popup = new Sprite_Damage();
     //寻找当前target的位置
     if (this.isActor()) {
@@ -2543,15 +2566,28 @@ Game_Battler.prototype.gainMpReward = function(value) {
             popup.x = targetSprite.x + targetSprite.damageOffsetX();
             popup.y = targetSprite.y + targetSprite.damageOffsetY();
         }
-        popup.visible = true;
-        if (value >= 0) {
-            popup.createMpRecovery("+" + Math.abs(value) + " MP");
-        }
-        else {
-            popup.createMpDamage("-" + Math.abs(value) + " MP");
-        }
-        $scene._ctbGauge.addChild(popup);
     }
+    else {
+        let targetSprite = null;
+        for (sprite of $scene._spriteset._enemySprites) {
+            if (sprite._enemy != null && sprite._enemy.index() === this.index()) {
+                targetSprite = sprite;
+                break;
+            }
+        }
+        if (targetSprite != null) {
+            popup.x = targetSprite.x;
+            popup.y = targetSprite.y - 40;
+        }
+    }
+    popup.visible = true;
+    if (value >= 0) {
+        popup.createMpRecovery("+" + Math.abs(value) + " MP");
+    }
+    else {
+        popup.createMpDamage("-" + Math.abs(value) + " MP");
+    }
+    $scene._ctbGauge.addChild(popup);
 };
 
 Game_Battler.prototype.gainTpReward = function(value) {
@@ -2564,15 +2600,28 @@ Game_Battler.prototype.gainTpReward = function(value) {
             popup.x = targetSprite.x + targetSprite.damageOffsetX();
             popup.y = targetSprite.y + targetSprite.damageOffsetY();
         }
-        popup.visible = true;
-        if (value >= 0) {
-            popup.createTpRecovery("+" + Math.abs(value) + " TP");
-        }
-        else {
-            popup.createTpDamage("-" + Math.abs(value) + " TP");
-        }
-        $scene._ctbGauge.addChild(popup);
     }
+    else {
+        let targetSprite = null;
+        for (sprite of $scene._spriteset._enemySprites) {
+            if (sprite._enemy != null && sprite._enemy.index() === this.index()) {
+                targetSprite = sprite;
+                break;
+            }
+        }
+        if (targetSprite != null) {
+            popup.x = targetSprite.x;
+            popup.y = targetSprite.y - 40;
+        }
+    }
+    popup.visible = true;
+    if (value >= 0) {
+        popup.createTpRecovery("+" + Math.abs(value) + " TP");
+    }
+    else {
+        popup.createTpDamage("-" + Math.abs(value) + " TP");
+    }
+    $scene._ctbGauge.addChild(popup);
 };
 
 
@@ -2713,8 +2762,6 @@ Scene_Battle.prototype.specialSkillWindowRect = function() {
 Scene_Battle.prototype.createSpecialSkillWindow = function() {
     const rect = this.specialSkillWindowRect();
     this._specialSkillWindow = new Window_BattleSpecialSkill(rect);
-    console.log(this._specialSkillWindow)
-    console.log(this._skillWindow)
     this._specialSkillWindow.hide();
     this._specialSkillWindow.setHelpWindow(this._helpWindow);
     this._specialSkillWindow.setHandler("ok", this.onSpecialSkillOk.bind(this));
@@ -2763,79 +2810,93 @@ Scene_Battle.prototype.onActorCancel = function() {
 // ==================== //
 Object.defineProperties(Game_Battler.prototype, {
     // 战技硬直倍率，乘算
-    _craft_delayST_rate: {
+    craft_delayST_rate: {
         get: function() {
             return this.cparam(0);
         },
         configurable: true
     },
     // 魔法驱动时间倍率，乘算
-    _castST_rate: {
+    castST_rate: {
         get: function() {
             return this.cparam(1);
         },
         configurable: true
     },
     // 魔法暴击率，加算
-    _magic_critical: {
+    magic_critical: {
         get: function() {
             return this.cparam(2);
         },
         configurable: true
     },
     // 暴击伤害额外加成倍率，内部加算，和原有1.5倍暴击伤害乘算
-    _extra_critical_damage_rate: {
+    extra_critical_damage_rate: {
         get: function() {
             return this.cparam(3);
         },
         configurable: true
     },
     // 技能的额外回复倍率，加算
-    _extra_heal_rate: {
+    extra_heal_rate: {
         get: function() {
             return this.cparam(4);
         },
         configurable: true
     },
     // 普通攻击·战技的伤害倍率
-    _pdr_to_target: {
+    pdr_to_target: {
         get: function() {
             return this.cparam(5);
         },
         configurable: true
     },
     // 攻击魔法的伤害倍率
-    _mdr_to_target: {
+    mdr_to_target: {
         get: function() {
             return this.cparam(6);
         },
         configurable: true
     },
     // 攻击时按照伤害回复MP的百分比，加算
-    _attack_mp_absorb_rate: {
+    attack_mp_absorb_rate: {
         get: function() {
             return this.cparam(7);
         },
         configurable: true
     },
     // 攻击时按照伤害回复HP的百分比，加算
-    _attack_hp_absorb_rate: {
+    attack_hp_absorb_rate: {
         get: function() {
             return this.cparam(8);
         },
         configurable: true
     },
     // 击杀敌人时回复的TP，加算
-    _kill_tp_absorb_value: {
+    kill_tp_absorb_value: {
         get: function() {
             return this.cparam(9);
         },
         configurable: true
     },
     // 受攻击时的TP回复倍率，加算
-    _hit_tp_charge_rate: {
+    hit_tp_charge_rate: {
         get: function() {
             return this.cparam(10);
+        },
+        configurable: true
+    },
+    // 残血伤害倍率
+    low_hp_damage_rate: {
+        get: function() {
+            return this.cparam(11);
+        },
+        configurable: true
+    },
+    // 满血伤害倍率
+    high_hp_damage_rate: {
+        get: function() {
+            return this.cparam(12);
         },
         configurable: true
     }
@@ -2853,23 +2914,23 @@ Game_Battler.prototype.cparamPlus = function(paramId) {
     let value = 0;
     if (this.isActor()) {
         //装备
-        for (const item of this.equips()) {
+        for (const item of this.equips().concat(this.magicStones())) {
             if (item && item.meta) {
                 //处理每一类特性
-                if (paramId === 2 && item.meta["magic critical rate"]) {
-                    value += parseFloat(eval(item.meta["magic critical rate"]));  //魔法暴击注释里写+/-0.5这样的
+                if (paramId === 2 && item.meta["Magic Critical Rate"]) {
+                    value += parseFloat(eval(item.meta["Magic Critical Rate"]));  //魔法暴击注释里写+/-0.5这样的
                 }
-                if (paramId === 3 && item.meta["extra critical damage rate"]) {
-                    value += parseFloat(eval(item.meta["extra critical damage rate"]));  //注释里写+/-0.5这样的
+                if (paramId === 3 && item.meta["Extra Critical Damage Rate"]) {
+                    value += parseFloat(eval(item.meta["Extra Critical Damage Rate"]));  //注释里写+/-0.5这样的
                 }
-                if (paramId === 4 && item.meta["extra heal rate"]) {
-                    value += parseFloat(eval(item.meta["extra heal rate"]));  //注释里写+/-0.5这样的
+                if (paramId === 4 && item.meta["Extra Heal Rate"]) {
+                    value += parseFloat(eval(item.meta["Extra Heal Rate"]));  //注释里写+/-0.5这样的
                 }
-                if (paramId === 5 && item.meta["craft damage rate"]) {
-                    value += parseFloat(eval(item.meta["craft damage rate"]));  //物理增伤倍率注释里写+/-0.5这样的
+                if (paramId === 5 && item.meta["Craft Damage Rate"]) {
+                    value += parseFloat(eval(item.meta["Craft Damage Rate"]));  //物理增伤倍率注释里写+/-0.5这样的
                 }
-                if (paramId === 6 && item.meta["magic damage rate"]) {
-                    value += parseFloat(eval(item.meta["magic damage rate"]));  //魔法增伤倍率注释里写+/-0.5这样的
+                if (paramId === 6 && item.meta["Magic Damage Rate"]) {
+                    value += parseFloat(eval(item.meta["Magic Damage Rate"]));  //魔法增伤倍率注释里写+/-0.5这样的
                 }
                 if (paramId === 7 && item.meta["Mp Absorb Rate"]) {
                     value += parseFloat(eval(item.meta["Mp Absorb Rate"]));
@@ -2883,6 +2944,12 @@ Game_Battler.prototype.cparamPlus = function(paramId) {
                 if (paramId === 10 && item.meta["Hit Tp Charge Rate"]) {
                     value += parseFloat(eval(item.meta["Hit Tp Charge Rate"]));
                 }
+                if (paramId === 11 && item.meta["Low Hp Damage Rate"]) {
+                    value += parseFloat(eval(item.meta["Low Hp Damage Rate"]));
+                }
+                if (paramId === 12 && item.meta["High Hp Damage Rate"]) {
+                    value += parseFloat(eval(item.meta["High Hp Damage Rate"]));
+                }
             }
         }
     }
@@ -2891,20 +2958,20 @@ Game_Battler.prototype.cparamPlus = function(paramId) {
         const item = $dataStates[stateId];
         if (item && item.meta) {
             //处理每一类特性
-            if (paramId === 2 && item.meta["magic critical rate"]) {
-                value += parseFloat(eval(item.meta["magic critical rate"]));  //魔法暴击注释里写+/-0.5这样的
+            if (paramId === 2 && item.meta["Magic Critical Rate"]) {
+                value += parseFloat(eval(item.meta["Magic Critical Rate"]));  //魔法暴击注释里写+/-0.5这样的
             }
-            if (paramId === 3 && item.meta["extra critical damage rate"]) {
-                value += parseFloat(eval(item.meta["extra critical damage rate"]));  //注释里写+/-0.5这样的
+            if (paramId === 3 && item.meta["Extra Critical Damage Rate"]) {
+                value += parseFloat(eval(item.meta["Extra Critical Damage Rate"]));  //注释里写+/-0.5这样的
             }
-            if (paramId === 4 && item.meta["extra heal rate"]) {
-                value += parseFloat(eval(item.meta["extra heal rate"]));  //注释里写+/-0.5这样的
+            if (paramId === 4 && item.meta["Extra Heal Rate"]) {
+                value += parseFloat(eval(item.meta["Extra Heal Rate"]));  //注释里写+/-0.5这样的
             }
-            if (paramId === 5 && item.meta["craft damage rate"]) {
-                value += parseFloat(eval(item.meta["craft damage rate"]));  //物理增伤倍率注释里写+/-0.5这样的
+            if (paramId === 5 && item.meta["Craft Damage Rate"]) {
+                value += parseFloat(eval(item.meta["Craft Damage Rate"]));  //物理增伤倍率注释里写+/-0.5这样的
             }
-            if (paramId === 6 && item.meta["magic damage rate"]) {
-                value += parseFloat(eval(item.meta["magic damage rate"]));  //魔法增伤倍率注释里写+/-0.5这样的
+            if (paramId === 6 && item.meta["Magic Damage Rate"]) {
+                value += parseFloat(eval(item.meta["Magic Damage Rate"]));  //魔法增伤倍率注释里写+/-0.5这样的
             }
             if (paramId === 7 && item.meta["Mp Absorb Rate"]) {
                 value += parseFloat(eval(item.meta["Mp Absorb Rate"]));
@@ -2917,6 +2984,12 @@ Game_Battler.prototype.cparamPlus = function(paramId) {
             }
             if (paramId === 10 && item.meta["Hit Tp Charge Rate"]) {
                 value += parseFloat(eval(item.meta["Hit Tp Charge Rate"]));
+            }
+            if (paramId === 11 && item.meta["Low Hp Damage Rate"]) {
+                value += parseFloat(eval(item.meta["Low Hp Damage Rate"]));
+            }
+            if (paramId === 12 && item.meta["High Hp Damage Rate"]) {
+                value += parseFloat(eval(item.meta["High Hp Damage Rate"]));
             }
         }
     }
@@ -2932,7 +3005,7 @@ Game_Battler.prototype.cparamRate = function(paramId) {
     let value = 1.0;
     if (this.isActor()) {
         //装备
-        for (const item of this.equips()) {
+        for (const item of this.equips().concat(this.magicStones())) {
             if (item && item.meta) {
                 if (paramId === 0 && item.meta["craft delayST rate"]) {
                     value *= parseFloat(eval(item.meta["craft delayST rate"]));  //减10%就在注释里写0.9，乘算，防止能降到0
@@ -2989,6 +3062,7 @@ Game_Battler.prototype.cparam = function(paramId) {
 // ==================== //
 /*   状态和buff回合处理   */
 // ==================== //
+
 /* 统一在行动后结算回合数，而不是回合结束时 */
 Game_Battler.prototype.updateStateTurns = function(timing) {
 	for (const stateId of this._states) {
@@ -3024,4 +3098,100 @@ Game_Battler.prototype.onTurnEnd = function() {
 	this.updateStateTurns(2);    //只更新“回合计数”的状态，用于无法行动的状态，防止死锁
     this.removeStatesAuto(2);
     this.extraEffectOnTurnEnd();
+};
+
+
+// ==================== //
+/* 设定敌人等级及是否为Boss */
+// ==================== //
+
+const _alderpaw_ctb_gameEnemy_initMembers = Game_Enemy.prototype.initMembers;
+Game_Enemy.prototype.initMembers = function() {
+	_alderpaw_ctb_gameEnemy_initMembers.call(this);
+	this._isBoss = false;
+    this.level = 1;
+}
+
+const _alderpaw_ctb_gameEnemy_setup = Game_Enemy.prototype.setup;
+Game_Enemy.prototype.setup = function(enemyId, x, y) {
+	_alderpaw_ctb_gameEnemy_setup.call(this, enemyId, x, y);
+	if (this.enemy() && this.enemy().meta) {
+        if (this.enemy().meta["Boss"]) {
+            this._isBoss = true;
+        }
+		if (this.enemy().meta["Level"]) {
+            this.level = parseInt(this.enemy().meta["Level"]);
+        }
+	}
+}
+
+Game_Enemy.prototype.isBoss = function() {
+	return this._isBoss;
+}
+
+
+// ==================== //
+/* 防护罩ui，功能写在VisuMZ插件配置里 */
+// ==================== //
+class Sprite_Gauge_Shield extends Sprite_Gauge {
+    currentValue() {
+        return this._battler._shieldHp;
+    }
+
+    currentMaxValue() {
+        return 2000;
+    }
+
+    label() {
+        return "HP护盾";
+    }
+
+    gaugeColor1() {
+        return ColorManager.ctGaugeColor1();
+    }
+
+    gaugeColor2() {
+        return ColorManager.ctGaugeColor2();
+    }
+
+    labelFontSize() {
+        return $gameSystem.mainFontSize() - 6;
+    }
+
+    labelY() {
+        return -3;
+    }
+
+    drawLabel() {
+        const label = this.label();
+        const x = 16 + this.labelOutlineWidth() / 2;
+        const y = this.labelY();
+        const width = this.bitmapWidth();
+        const height = this.textHeight();
+        this.setupLabelFont();
+        this.bitmap.paintOpacity = this.labelOpacity();
+        this.bitmap.drawText(label, x, y, width, height, "left");
+        this.bitmap.paintOpacity = 255;
+    }
+}
+
+// ==================== //
+/* 技能后面的范围图标显示 */
+// ==================== //
+Window_SkillList.prototype.drawItem = function(index) {
+    const skill = this.itemAt(index);
+    if (skill) {
+        const costWidth = this.costWidth();
+        const rect = this.itemLineRect(index);
+        this.changePaintOpacity(this.isEnabled(skill));
+        this.drawItemName(skill, rect.x, rect.y, rect.width - costWidth);
+        this.drawSkillCost(skill, rect.x - 2 * ImageManager.iconWidth - 8, rect.y, rect.width);
+        if (skill.meta["后缀图标"]) {
+            const definedIcons = skill.meta["后缀图标"].split(",");
+            const effectIconId = parseInt(definedIcons[0]) || 0;
+            const rangeIconId = parseInt(definedIcons[1]) || 0;
+            this.drawTextEx(`\\I[${effectIconId}]\\I[${rangeIconId}]`, rect.x + rect.width - 2 * ImageManager.iconWidth - 4, rect.y, ImageManager.iconWidth);
+        }
+        this.changePaintOpacity(1);
+    }
 };
