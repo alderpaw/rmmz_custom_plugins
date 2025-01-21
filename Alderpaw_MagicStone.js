@@ -448,6 +448,7 @@
 //=============================================================================
 var Alderpaw = Alderpaw || {}; 
 var Imported = Imported || {};
+Imported.Alderpaw_MagicStone = true;
 
 const magicStone_parameters = PluginManager.parameters('Alderpaw_MagicStone');
 Alderpaw.magicStoneEtypeId = Number(magicStone_parameters['magicStoneEtypeId'] || 5);
@@ -531,25 +532,27 @@ Game_System.prototype.isMagicStoneMenuEnabled = function() {
     return this._enableMagicStoneMenu;
 };
 
-const _alerpaw_magicStone_windowMenuCommand_addMainCommands = Window_MenuCommand.prototype.addMainCommands;
-Window_MenuCommand.prototype.addMainCommands = function() {
-    _alerpaw_magicStone_windowMenuCommand_addMainCommands.call(this);
-    this.addCommand(Alderpaw.magicStoneCommandName, "magicStone", $gameSystem.isMagicStoneMenuEnabled());
-};
-
-const _alderpaw_magicStone_sceneMenu_createCommandWindow = Scene_Menu.prototype.createCommandWindow;
-Scene_Menu.prototype.createCommandWindow = function() {
-    _alderpaw_magicStone_sceneMenu_createCommandWindow.call(this);
-    this._commandWindow.setHandler("magicStone", this.commandPersonal.bind(this));
-};
-
-const _alderpaw_magicStone_sceneMenu_onPersonalOk = Scene_Menu.prototype.onPersonalOk;
-Scene_Menu.prototype.onPersonalOk = function() {
-    _alderpaw_magicStone_sceneMenu_onPersonalOk.call(this);
-    if (this._commandWindow.currentSymbol() === "magicStone") {
-        SceneManager.push(Scene_MagicStone);
-    }
-};
+if (!Imported.VisuMZ_1_MainMenuCore) {
+    const _alerpaw_magicStone_windowMenuCommand_addMainCommands = Window_MenuCommand.prototype.addMainCommands;
+    Window_MenuCommand.prototype.addMainCommands = function() {
+        _alerpaw_magicStone_windowMenuCommand_addMainCommands.call(this);
+        this.addCommand(Alderpaw.magicStoneCommandName, "magicStone", $gameSystem.isMagicStoneMenuEnabled());
+    };
+    
+    const _alderpaw_magicStone_sceneMenu_createCommandWindow = Scene_Menu.prototype.createCommandWindow;
+    Scene_Menu.prototype.createCommandWindow = function() {
+        _alderpaw_magicStone_sceneMenu_createCommandWindow.call(this);
+        this._commandWindow.setHandler("magicStone", this.commandPersonal.bind(this));
+    };
+    
+    const _alderpaw_magicStone_sceneMenu_onPersonalOk = Scene_Menu.prototype.onPersonalOk;
+    Scene_Menu.prototype.onPersonalOk = function() {
+        _alderpaw_magicStone_sceneMenu_onPersonalOk.call(this);
+        if (this._commandWindow.currentSymbol() === "magicStone") {
+            SceneManager.push(Scene_MagicStone);
+        }
+    };
+}
 
 //=============================================================================
 // ** Game_Actor类的修改
@@ -572,6 +575,13 @@ Game_Actor = class extends Game_Actor {
                 this._magicSlotEnabledList = JSON.parse(magicSlotConfigItem.magicSlotEnabledList).map(Number);
                 this._magicSlotCostList = JSON.parse(magicSlotConfigItem.magicSlotCostList);
                 this._magicSlotMpIncreaseList = JSON.parse(magicSlotConfigItem.magicSlotMpIncreaseList).map(Number);
+                //初始的MP上限增加量
+                for (let i = 0; i < this._magicSlotNum; i++) {
+                    if (this._magicSlotEnabledList[i]) {
+                        this.addParam(1, this._magicSlotMpIncreaseList[i]);
+                        this.gainMp(this._magicSlotMpIncreaseList[i]);
+                    }
+                }
                 for (let i = 0; i < this._magicLines.length; i++) {
                     let currentLineElementPointItem = {};
                     for (const strValidElementItem of Alderpaw.validElementItems) {
@@ -637,11 +647,21 @@ Game_Actor = class extends Game_Actor {
         if (previousItem != null) {
             if (previousItem.meta["Attached Magics"]) {
                 let skill_ids_and_levels = previousItem.meta["Attached Magics"].split(",");
+                const actorClass = this.currentClass();
                 for (let i = 0; i < skill_ids_and_levels.length; i += 2) {
                     let skill_id = parseInt(skill_ids_and_levels[i]);
                     let level = parseInt(skill_ids_and_levels[i + 1]);
                     if (this.level >= level) {
-                        this.forgetSkill(skill_id);
+                        let shouldForget = true;
+                        for (const learningSkillItem of actorClass.learnings) {
+                            if (learningSkillItem.skillId === skill_id) {
+                                shouldForget = false;
+                                break;
+                            }
+                        }
+                        if (shouldForget) {
+                            this.forgetSkill(skill_id);
+                        }
                     }
                 }
             }
@@ -832,9 +852,9 @@ class Scene_MagicStone extends Scene_MenuBase {
     }
 
     magicTableWindowRect() {
-        const wx = Graphics.boxWidth * 0.25;
+        const wx = Graphics.boxWidth * 0.15;
         const wy = this.mainAreaTop() - this.helpAreaHeight() / 2;
-        const ww = Graphics.boxWidth * 0.5;
+        const ww = Graphics.boxWidth * 0.7;
         const wh = this.mainAreaHeight();
         return new Rectangle(wx, wy, ww, wh);
     }
@@ -1116,10 +1136,20 @@ class Scene_MagicStone extends Scene_MenuBase {
                 }
             }
 
-            //遗忘旧魔法
+            //遗忘旧魔法，但角色职业固有的不会遗忘
             for (const oldMagicSkill of oldMagics) {
                 const oldSkillId = oldMagicSkill.id;
-                actor.forgetSkill(oldSkillId);
+                const actorClass = actor.currentClass();
+                let shouldForget = true;
+                for (const learningSkillItem of actorClass.learnings) {
+                    if (learningSkillItem.skillId === oldSkillId) {
+                        shouldForget = false;
+                        break;
+                    }
+                }
+                if (shouldForget) {
+                    actor.forgetSkill(oldSkillId);
+                }
             }
             //学会新配出的魔法
             for (const newSkillId of newMagicIds) {
@@ -1178,12 +1208,7 @@ class Window_MagicTable extends Window_Selectable {
                 const elementId = requirementJson.elementId.toString();
                 const elementPoint = parseInt(requirementJson.elementPoint);
                 const elementIconIndex = this._elementId2IconIndex[elementId];
-                if (j < elementRequirements.length - 1) {
-                    ingredientString += `\\I[${elementIconIndex}]×${elementPoint}，`;
-                }
-                else {
-                    ingredientString += `\\I[${elementIconIndex}]×${elementPoint}`;
-                }
+                ingredientString += `\\I[${elementIconIndex}]×${elementPoint}`;
             }
             this._data.push(ingredientString + "：" + magicName + `(${magicSimpleDesc})`);
         }
@@ -1239,22 +1264,21 @@ class Window_MagicList extends Window_StatusBase {
         const maxRows = Math.floor((this.innerHeight - 2 * this.lineHeight()) / this.lineHeight());
         const maxDisplayNum = maxRows * 2;
         this.drawActorName(this._actor, nameRect.x, 0, nameRect.width);
-        for (let i = 0; i < Math.min(maxDisplayNum, this._actor.skills().length); i++) {
-            const skill = this._actor.skills()[i];
-            if (skill.stypeId === Alderpaw.magicSkillTypeId) {
-                const skillIconId = skill.iconIndex;
-                const skillName = skill.name;
-                if (i < maxDisplayNum - 2 || this._actor.skills().length <= maxDisplayNum) {
-                    this.drawTextEx(`\\I[${skillIconId}]${skillName}`, 
-                        this.itemPadding() + (this.innerWidth / 2) * (i % 2), 
-                        this.lineHeight() * (Math.floor(i / 2) + 1.5), 
-                        (this.innerWidth - 2 * this.itemPadding()) / 2);
-                }
-                else {
-                    this.drawText("......", this.itemPadding() + (this.innerWidth / 2) * (i % 2), 
-                                  this.lineHeight() * (Math.floor(i / 2) + 1.5), 
-                                  (this.innerWidth - 2 * this.itemPadding()) / 2);
-                }
+        const actorMagics = this._actor.skills().filter(item => item.stypeId === Alderpaw.magicSkillTypeId);
+        for (let i = 0; i < Math.min(maxDisplayNum, actorMagics.length); i++) {
+            const skill = actorMagics[i];
+            const skillIconId = skill.iconIndex;
+            const skillName = skill.name;
+            if (i < maxDisplayNum - 2 || actorMagics.length <= maxDisplayNum) {
+                this.drawTextEx(`\\I[${skillIconId}]${skillName}`, 
+                    this.itemPadding() + (this.innerWidth / 2) * (i % 2), 
+                    this.lineHeight() * (Math.floor(i / 2) + 1.5), 
+                    (this.innerWidth - 2 * this.itemPadding()) / 2);
+            }
+            else {
+                this.drawText("......", this.itemPadding() + (this.innerWidth / 2) * (i % 2), 
+                                this.lineHeight() * (Math.floor(i / 2) + 1.5), 
+                                (this.innerWidth - 2 * this.itemPadding()) / 2);
             }
         }
         this.changeTextColor(ColorManager.textColor(2));
@@ -1694,7 +1718,7 @@ class Window_MagicStoneStatus extends Window_StatusBase {
         }
         else {
             newValue = parseInt(this._tempActor.xparam(paramId - 8) * 100).toString() + "%";
-            diffValue = parseInt(parseInt(newValue) - this._actor.xparam(paramId - 8) * 100).toString() + "%";
+            diffValue = parseInt(parseInt(newValue) - parseInt(this._actor.xparam(paramId - 8) * 100)).toString() + "%";
         }
         this.changeTextColor(ColorManager.paramchangeTextColor(parseInt(diffValue)));
         this.drawText(newValue, x, y, paramWidth, "right");

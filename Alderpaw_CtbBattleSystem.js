@@ -4,15 +4,12 @@
 
 /*:
  * @target MZ
- * @plugindesc [V 1.01] CTB战斗系统
+ * @plugindesc [V 1.10] CTB战斗系统
+ * @base VisuMZ_1_BattleCore
+ * @orderAfter VisuMZ_1_BattleCore
  * @author Alderpaw
+ * @url https://github.com/alderpaw/rmmz_custom_plugins
  *
- * @param ctbLayoutMode
- * @text ctb行动条方向
- * @type boolean
- * @desc 横向(位于屏幕最上方，true)
- * 竖向(位于屏幕左方，false)
- * @default true
  * 
  * @param ctbPosX
  * @text ctb行动条的x轴偏移量
@@ -46,7 +43,7 @@
  * @param ctbIdleSkillId
  * @text 无效行动的技能ID
  * @type skill
- * @desc ctb战斗系统中，在无法行动状态下AT也会前进，只不过轮到行动回合时自动跳过回合，因此需要设定一个空技能。
+ * @desc ctb战斗系统中，在无法行动状态下轮到行动回合时会自动跳过回合，因此需要设定一个空技能。这个技能的类型一定要是“无”。
  * @default 8
  * 
  * @param ctbCurrentAnchorImg
@@ -164,12 +161,51 @@
  * 
  * 实现类似轨迹的CTB战斗系统，根据人物agi和不同行动的耗时来决定各角色的行动顺序。
  * 
- * 具体来说，每名敌我角色都有一个AT(Action Time)值，AT=0时该名角色就可以行动。
+ * *************** v1.10修改 ***************
+ * ****** BUG修复和特性修改 ******
+ * 1. 修复了有时按键盘1~4键无法爆S技的问题。
+ * 2. 修复了角色正在释放技能动画时，对该角色爆S技会导致窗口卡住的问题。
+ * 3. 删除了竖向行动条，只保留横向（理解一下，不想适配了）。
+ * 4. 修复了回复/扣血类AT奖励触发时机不固定的问题。现在一定会在轮到角色行动回合
+ * 时触发效果，不会在行动结束后再触发。并且，如果这个AT奖励已经对某名角色产生过
+ * 效果了，那么爆S技的角色虽然会强制移动到该位置，但不会重复获得该AT奖励。
+ * 5. 修复了某些异常状态下战斗系统可能会卡死的问题（还需验证是否完全修复）。
+ * 6. 现在本插件将VisuMZ战斗核心指定为了必需的前置插件。
+ * 7. 增加对魔石系统的适配。
+ * 
+ * ****** 新增功能 ******
+ * 1. 新增选择技能/物品时行动条可往下移的选项，避免挡住上方的描述窗口。
+ * 2. 新增开局直接插入一定量AT奖励的选项。
+ * 3. 改变了状态和BUFF计算回合数的逻辑。现在状态和BUFF都是在
+ * 4. 可指定敌人等级以及是否为Boss，用于实现你想要的功能。例如，DQ中只对等级为
+ * 特定倍数的敌人才生效的即死魔法，闪之轨迹中Boss类敌人只会进入1回合异常状态等。
+ * 具体用法请看下面的Notetags部分的说明。
+ * 5. 新增很多轨迹系列里经常用到的人物属性，例如暴击增伤、低血增伤、护盾等。这些
+ * 参数需要通过备注栏指定，并且一定要在VisuMZ战斗核心中做适当配置才能生效。具体
+ * 请看下面的Notetags部分的说明。
+ * 6. 本插件里还包含对VisuMZ_2_BattleGrid插件的一些兼容，但这个插件得额外付费20
+ * 美刀，大部分人应该不用，所以此处不赘述。
+ * 
+ * *************** v1.01新增 ***************
+ * 1. 获得零驱动AT奖励时，魔法预测的行动位置显示为硬直时间，而不是驱动时间。
+ * 2. 增加插件参数，可选择竖向放置ctb行动条。
+ * 3. 增加新功能：可为装备设定AT延迟效果，装备上后攻击就能延迟敌人。
+ * 4. 增加新功能：S爆发技。类似空轨，按下键盘上的1~4数字键可无视行动顺序瞬发S技。
+ * 此时会强制进入S技选择界面，只能使用S技，不能做其他任何操作。
+ * 可以在插件参数中设置爆S技时的音效以及需要多少TP才能发动S技。
+ * 另外，最好在人物栏创建一个标记，符合发动S技的条件时就亮起。
+ * 但由于每个人的UI都不同，这里就不提供了，可以自己简单写一下。
+ * 判断能否使用S技，可在脚本中使用以下语句：
+ * if ($gameParty.members()[i].canUseSBreak())，i=0-3，对应1-4号位。
+ * 
+ * 
+ * ********** 战斗系统介绍 **********
+ * 每名敌我角色都有一个AT(Action Time)值，AT=0时该名角色就可以行动。
  * 战斗开始时，每名角色都有一个随机的AT值，agi越高则AT值小的概率就越大。
  * 战斗开始时以及每次行动结束时，都会同步减少所有角色的AT，直到有角色的AT减至0。
  * 不同的行动(技能、物品、普攻等)具有不同的耗时，称之为ST(Skill Time)。
  * 对于ST，可以分别设置驱动时间castST和硬直时间delayST。
- * -驱动时间：技能使用后需要读条才能释放，一般可用于魔法技能。
+ * -驱动时间：技能使用后需要读条才能释放，一般这种技能就是魔法。
  * -硬直时间：技能结束后，角色需要等待多久才能再次行动。
  * 每次行动后，根据ST和agi可以计算得知该名角色的AT会增加多少。
  * AT计算公式为ΔAT=100*ST/agi，向下取整。
@@ -179,48 +215,218 @@
  * 此外，行动条上还会随机出现AT奖励，会使当前行动的角色受到一些增益或减益效果。
  * 你可以控制AT奖励的出现概率，并定义AT奖励的种类。
  * 
- * ********** v1.01新增 **********
- * 1. 当获得零驱动AT奖励时，选择魔法时预测的行动位置显示为硬直时间，而不是驱动时间。
- * 2. 增加插件参数，可选择竖向放置ctb行动条。
- * 3. 增加新功能：可为装备设定AT延迟效果，装备上后攻击就能延迟敌人。
- * 4. 增加新功能：S爆发技。类似空轨，按下键盘上的1~4数字键可无视行动顺序瞬发S技。
- *    此时会强制进入S技选择界面，只能使用S技，不能做其他任何操作。
- *    可以在插件参数中设置爆S技时的音效以及需要多少TP才能发动S技。
- *    另外，最好在人物栏创建一个标记，符合发动S技的条件时就亮起。
- *    但由于每个人的UI都不同，这里就不提供了，可以自己简单写一下。
- *    判断能否使用S技，可在脚本中使用以下语句：
- *    if ($gameParty.members()[i].canUseSBreak())，i=0-3，对应1-4号位。
+ * 在轨迹系列中，技能一般是分为战技和魔法。所有“命中类型”为物理攻击的技能就是战技，
+ * 所有“命中类型”为魔法攻击的技能就是魔法。注意战技和魔法的区分只和命中类型相关，而
+ * 与伤害的计算公式无关，例如部分战技也可以是魔法伤害，伤害公式考虑使用者的魔攻和目
+ * 标的魔防。下文中所有的“战技”和“魔法”都遵循这里的定义。
+ * 一般来说普通攻击也会设置为物理命中类型，所以普通攻击也属于战技。
+ * 魔法需要驱动时间，战技不需要，本系统计算驱动时间时也只会考虑上面定义的“魔法”。
+ * 
+* ********** VisuMZ战斗核心设置 **********
+ * 如果你希望本插件新增的人物属性能实际生效的话，必须在VisuMZ战斗核心中做以下设置。
+ * 建议打开本插件的.js文件再复制，格式更好看。
+ * 1. 把Damage Settings的Formulas的JS: Overall Formula改成以下内容：
+const user = this.subject();
+const target = arguments[0];
+const critical = arguments[1];
+const item = this.item();
+const stunStateId = 13;
+// Get Base Damage
+const baseValue = this.evalDamageFormula(target);
+// Calculate Element Modifiers
+let value = baseValue * this.calcElementRate(target);
+// Calculate Physical and Magical Modifiers
+if (this.isPhysical()) {
+    value *= target.pdr;
+    value *= user.pdr_to_target;
+    //计算残血和满血增伤
+    value *= (1 + (user.low_hp_craft_damage_rate - 1) * (1 - user.hp / user.mhp));
+    value *= (1 + (user.high_hp_craft_damage_rate - 1) * (user.hp / user.mhp));
+}
+if (this.isMagical()) {
+    value *= target.mdr;
+    value *= user.mdr_to_target;
+    //计算残血和满血增伤
+    value *= (1 + (user.low_hp_magic_damage_rate - 1) * (1 - user.hp / user.mhp));
+    value *= (1 + (user.high_hp_magic_damage_rate - 1) * (user.hp / user.mhp));
+}
+// Apply Healing Modifiers
+if (baseValue < 0) {
+    value *= target.rec;
+    if (item.isSkill()) {
+        value *= user.extra_heal_rate;
+    }
+}
+// Apply Critical Modifiers
+if (critical) {
+    value = this.applyCritical(value);
+}
+// Apply Variance and Guard Modifiers
+value = this.applyVariance(value, item.damage.variance);
+value = this.applyGuard(value, target);
+//破防增伤
+if (target.isStateAffected(stunStateId)) {
+    value *= 1.2;
+}
+// 伤害取整后，减去护盾
+value = Math.round(value);
+if (target._shieldHp > 0) {
+    const originalShieldHp = target._shieldHp;
+    target._shieldHp = Math.max(0, target._shieldHp - value);
+    value = Math.max(0, value - originalShieldHp);
+    if (target._shieldHp === 0) {
+        for (const state of target.states()) {
+            if (state.meta["Shield Hp Value"]) {
+                target.removeState(state.id);
+                break;
+            }
+        }
+    }
+}
+return value;
+ * 
+ * 2. 把Damage Settings的Critical Hits的JS: Damage Formula改成以下内容：
+// Declare Constants
+const user = this.subject();
+let damage = arguments[0];
+let multiplier = 1.5;
+let bonusDamage = this.subject().luk * this.subject().cri;
+if (this.isHpRecover() || this.isMpRecover()) {
+    bonusDamage *= -1;
+}
+if (this.isPhysical()) {
+    multiplier *= user.extra_critical_damage_rate;
+}
+// Apply Notetags
+const note = this.item().note;
+if (note.match(/<MODIFY CRITICAL MULTIPLIER:[ ](\d+)([%％])>/i)) {
+    multiplier = Number(RegExp.$1) / 100;
+}
+if (note.match(/<MODIFY CRITICAL MULTIPLIER:[ ]([\+\-]\d+)([%％])>/i)) {
+    multiplier += Number(RegExp.$1) / 100;
+}
+if (note.match(/<MODIFY CRITICAL BONUS DAMAGE:[ ](\d+)([%％])>/i)) {
+    bonusDamage *= Number(RegExp.$1) / 100;
+}
+if (note.match(/<MODIFY CRITICAL BONUS DAMAGE:[ ]([\+\-]\d+)([%％])>/i)) {
+    bonusDamage += bonusDamage * (RegExp.$1) / 100;
+}
+if (note.match(/<JS CRITICAL DAMAGE>\s*([\s\S]*)\s*<\/JS CRITICAL DAMAGE>/i)) {
+    const code = String(RegExp.$1);
+    try {
+        eval(code);
+    } catch (e) {
+        if ($gameTemp.isPlaytest()) console.log(e);
+    }
+}
+// Return Damage
+return damage * multiplier;
+ * 
+ * 3. 把Mechanics Settings的JS: Action Related的JS: Post-Damage改成以下内容：
+const value = arguments[0];
+const target = arguments[1];
+const user = this.subject();
+const a = user;
+const b = target;
+const action = this;
+const item = this.item();
+const skill = this.item();
+if (this.isMagical() && user.attack_mp_absorb_rate > 0) {
+    user.gainMp(Math.floor(value * user.attack_mp_absorb_rate));
+}
+if (this.isPhysical() && user.attack_hp_absorb_rate > 0) {
+    user.gainHp(Math.floor(value * user.attack_hp_absorb_rate));
+}
+if (value >= target.hp && user.kill_tp_absorb_value > 0) {
+    user.gainTpReward(user.kill_tp_absorb_value);
+}
+return value;
  *
  * ********** Notetags **********
+ * 扩展功能通过将特定标签写在备注栏来实现。注意，以下所有的冒号都是英文冒号。
+ * 
  * 1. 设定技能的驱动时间和硬直时间
- * <castST:50>表示该技能的驱动时间为50，若不设置则驱动时间默认为0(即不需要驱动)
- * <delayST:120>表示该技能的硬直时间为120，若不设置则硬直时间默认为100
+ * 填写位置：技能的备注栏
+ * <castST:50> 该技能的驱动时间为50，若不设置则驱动时间默认为0(即不需要驱动)。
+ * <delayST:120> 该技能的硬直时间为120，若不设置则硬直时间默认为100。
  * 
- * 2. 增加命中目标的AT，可用于实现具有延迟效果的技能，写在技能栏备注
- * <AT Delay By Value:+x>表示技能命中后直接将目标的AT增加x，与agi无关，延迟量固定为x
- * <AT Delay By ST:+x>表示技能命中后使目标的硬直增加x，通过100*x/target.agi计算得到AT延迟量
- * <AT Delay Chance:0.x>表示有0.x的概率触发延迟，不写默认100%触发(若敌人有延迟抗性，要相应折算)
+ * 2. 增加命中目标的AT，可用于实现具有延迟效果的技能或装备
+ * 填写位置：技能、装备的备注栏
+ * <AT Delay By Value:+x> 命中后固定将目标的AT增加x，这种延迟与agi无关。
+ * <AT Delay By ST:+x> 命中后使目标的硬直增加x，实际AT延迟量为100*x/target.agi。
+ * <AT Delay Chance:0.x> 有0.x的概率触发延迟，不写默认100%触发(若敌人有延迟抗性，会相应折算)。
+ * 另外，可以在插件参数中指定哪些类型的技能会触发装备的延迟特效。比如轨迹系列中，
+ * 一般魔法不会触发这类特效，只有普通攻击和战技可以。
  * 
- * 3. 减少命中目标的AT，可用于实现提行动条的技能，写在技能栏备注
- * <AT Advance By Value:+x>表示技能命中后使目标的AT减少x，与agi无关
- * <AT Advance By ST:+x>表示技能命中后使目标的硬直减少x，通过100*x/target.agi计算得到AT减少量
+ * 3. 减少命中目标的AT，可用于实现提行动条的技能
+ * 填写位置：技能的备注栏
+ * <AT Advance By Value:+x>表示技能命中后使目标的AT减少x，与agi无关。
+ * <AT Advance By ST:+x>表示技能命中后使目标的硬直减少x，通过100*x/target.agi计算得到AT减少量。
  * 
- * 4. 解除驱动的效果，写在技能栏备注
+ * 4. 设置本技能具有解除正在驱动的魔法的功能
+ * 填写位置：技能的备注栏
  * <Cancel Cast>
  * 
- * 5. 特定状态下才能/不能使用的技能，写在技能栏备注
- * <Disabled In State: x>表示该技能在x号状态下无法使用
- * <Enabled In State: x>表示该技能只有在x号状态下才能使用
+ * 5. 特定状态下才能/不能使用的技能
+ * 填写位置：技能的备注栏
+ * <Disabled In State: x>表示该技能在x号状态下无法使用。
+ * <Enabled In State: x>表示该技能只有在x号状态下才能使用。
  * 
- * 6. 指定技能为S爆发技，写在技能栏备注
- * <奥义技>表示将此技能设定为S爆发技，可以设定多个，爆S时选择一个使用
+ * 6. 指定技能为S爆发技
+ * 填写位置：技能的备注栏
+ * <奥义技>表示将此技能设定为S爆发技，可以设定多个，爆S时选择一个使用。
  * 
- * 7. 为装备设定AT延迟特效，特定类型的技能命中后可延迟敌人
- * <AT Delay By Value:+x>
- * <AT Delay By ST:+x>
- * <AT Delay Chance:0.x>
- * 将这些标签写在装备栏备注即可。
- * 另外，可以在插件参数中指定哪些类型的技能会触发装备的延迟特效。
+ * 7. 指定敌人的等级以及是否为Boss
+ * 填写位置：敌人的备注栏
+ * <Level: x> 表示将敌人等级设定为x
+ * <Boss> 表示将该敌人设定为Boss
+ * Game_Enemy类新增一个isBoss()方法，用于判断敌人是否为Boss。
+ * 
+ * 8. 人物新增属性
+ * 填写位置：装备、状态的备注栏，角色佩戴该装备或拥有该状态时触发相应效果。
+ * <Craft DelayST Rate: x.y> 
+ * 角色所有行动的硬直时间（ST）变为x.y倍。多个装备·状态的该效果之间乘算。
+ * <CastST Rate: x.y>
+ * 角色使用魔法时的驱动时间变为x.y倍。多个装备·状态的该效果之间乘算。
+ * <Magic Critical Rate: +0.x>
+ * 轨迹系列里，魔法是无法暴击的，因此我推荐在数据库里把魔法的暴击设置为“无”。
+ * 而这个标签可以使魔法有0.x的概率暴击。多个效果之间加算。
+ * <Extra Critical Damage Rate: +0.x>
+ * 角色的暴击伤害额外增加0.x，多个效果之间加算。内部加算后，和原始暴击伤害倍率
+ * 之间则是乘算。比如原始暴击伤害1.5倍，有2个装备设置了这个标签，分别是+0.1和
+ * +0.2，那么最终暴击伤害倍率为1.5*(1+0.2+0.1)=1.95。
+ * <Extra Heal Rate: +0.x>
+ * 角色使用回复技能时，对目标的治疗效果额外提升0.x倍。多个效果之间加算。
+ * <Craft Damage Rate: +0.x>
+ * 角色使用战技(命中类型为物理的技能)时，伤害增加0.x倍，多个效果之间加算。
+ * <Magic Damage Rate: +0.x>
+ * 角色使用魔法(命中类型为魔法的技能)时，伤害增加0.x倍，多个效果之间加算。
+ * <Mp Absorb Rate: +0.x>
+ * 角色使用魔法命中敌人时，按照伤害的0.x倍回复MP，多个效果之间加算。
+ * <Hp Absorb Rate: +0.x>
+ * 角色使用战技命中敌人时，按照伤害的0.x倍回复HP，多个效果之间加算。
+ * <Kill Tp Absorb Value: +x>
+ * 角色击杀敌人时，回复x点TP。多个效果之间加算。
+ * <Low Hp Craft Damage Rate: +0.x>
+ * 角色HP越低则战技伤害越高，1血时增加0.x倍，满血时不增伤(线性关系)，多个效果之间加算。
+ * <Low Hp Magic Damage Rate: +0.x>
+ * 角色HP越低则魔法伤害越高，1血时增加0.x倍，满血时不增伤(线性关系)，多个效果之间加算。
+ * <High Hp Craft Damage Rate: +0.x>
+ * 角色HP越高则战技伤害越高，满血时增加0.x倍，1血时不增伤(线性关系)，多个效果之间加算。
+ * <High Hp Magic Damage Rate: +0.x>
+ * 角色HP越高则魔法伤害越高，满血时增加0.x倍，1血时不增伤(线性关系)，多个效果之间加算。
+ * 
+ * 9. 护盾相关
+ * 填写位置：状态的备注栏
+ * <Shield Hp Value: x> 此状态提供护盾效果，护盾的承伤上限为x(x是正整数)。
+ * 这个护盾是黎轨里的机制，而不是空零碧闪那样的按次数来完全防御，因为我一直
+ * 觉得空轨的盾太强了，黎轨的平衡一点。对于护盾状态，需要将持续回合数设置为
+ * 无效，护盾HP消耗完后会自动移除。另外，最好是给护盾做一个UI，用来显示角色
+ * 当前的护盾值。本插件实现了一个Sprite_Gauge_Shield类，可以像HP那样显示一
+ * 个类似血条的“护盾条”，但是需要一定的JS基础才能将其放到战斗UI上去。由于每
+ * 个人使用的战斗UI都不同，本插件没有实现UI的修改，只是提供了护盾的机制。
+ * 
+ * 
 */
 /*~struct~ctbBonus:
  * @param name
@@ -264,6 +470,8 @@
 // ** PLUGIN PARAMETERS
 //=============================================================================
 var Alderpaw = Alderpaw || {}; 
+var Imported = Imported || {};
+Imported.Alderpaw_CtbBattleSystem = true;
 
 const alderpawCtbParameters = PluginManager.parameters('Alderpaw_CtbBattleSystem');
 Alderpaw.ctbPosX = Number(alderpawCtbParameters["ctbPosX"] || 0);
@@ -282,7 +490,6 @@ Alderpaw.ctbGaugeBonusList = alderpawCtbParameters["ctbGaugeBonusList"] || [];
 Alderpaw.ctbShowAdvancePopup = alderpawCtbParameters["ctbShowAdvancePopup"] === "false" ? false : true;
 Alderpaw.ctbCurrentAnchorImg = alderpawCtbParameters["ctbCurrentAnchorImg"] || "anchor_current";
 Alderpaw.ctbPredictAnchorImg = alderpawCtbParameters["ctbPredictAnchorImg"] || "anchor_predict";
-Alderpaw.ctbLayoutMode = alderpawCtbParameters["ctbLayoutMode"] === "false" ? false : true;
 Alderpaw.ctbSBreakTriggerSE = alderpawCtbParameters["ctbSBreakTriggerSE"] || null;
 Alderpaw.ctbSBreakMinTP = Number(alderpawCtbParameters["ctbSBreakMinTP"] || 100);
 Alderpaw.ctbStartBonusNum = Number(alderpawCtbParameters["ctbStartBonusNum"] || 4);
@@ -370,37 +577,20 @@ CTB_Gauge.prototype.initialize = function() {
     this.x = Alderpaw.ctbPosX;
     this.y = Alderpaw.ctbPosY;
 	this._iconImg = ImageManager.loadSystem("IconSet");
-    if (Alderpaw.ctbLayoutMode) {
-        this._layout = new Sprite(new Bitmap(Math.min(1200, (Alderpaw.ctbMaxShowNum + 2.7) * 48), 160));
-    }
-    else {
-        this._layout = new Sprite(new Bitmap(160, Math.min(1200, (Alderpaw.ctbMaxShowNum + 2.7) * 48)));
-    }
-    if (Alderpaw.ctbLayoutMode) {
-        this._layout.x = 32;
-        this._layout.y = 16;
-    }
-    else {
-        this._layout.x = 0;
-        this._layout.y = 8;
-    }
+    this._layout = new Sprite(new Bitmap(Math.min(1200, (Alderpaw.ctbMaxShowNum + 2.7) * 48), 160));
+    this._layout.x = 32;
+    this._layout.y = 16;
     this.addChild(this._layout);
     //创建指示具体delay数值的文本
     this._delay_anchor_num = new Sprite(new Bitmap(160, 32));
     this._delay_anchor_num.bitmap.fontSize = 18;
-	if (FontManager._states["my-battle-hud-font"] !== "loaded") {
-		FontManager.load("my-battle-hud-font", "ZCOOL_KuaiLe2016.otf");
-	}
-    this._delay_anchor_num.bitmap.fontFace = "my-battle-hud-font";
+	// if (FontManager._states["my-battle-hud-font"] !== "loaded") {
+	// 	FontManager.load("my-battle-hud-font", "ZCOOL_KuaiLe2016.otf");
+	// }
+    // this._delay_anchor_num.bitmap.fontFace = "my-battle-hud-font";
     this._delay_anchor_num.visible = false;
-    if (Alderpaw.ctbLayoutMode) {
-        this._delay_anchor_num.x = 0;
-        this._delay_anchor_num.y = -4;
-    }
-    else {
-        this._delay_anchor_num.y = 0;
-        this._delay_anchor_num.x = 80;
-    }
+    this._delay_anchor_num.x = 0;
+    this._delay_anchor_num.y = -4;
 	this.addChild(this._delay_anchor_num);
     //创建AT奖励
     this._currentBonusList = Array(Alderpaw.ctbMaxShowNum + 1).fill(-1);
@@ -457,177 +647,177 @@ CTB_Gauge.prototype.initBonus = function() {
     }
 }
 
-//判断battler是否在当前技能所选的网格范围内
-function checkGridSelection(gridSelectWindowIndex, battlerRank, battlerFlank, aoeType, targetType, isEnemy) {
-	if (targetType == null) {
-		return false;
-	}
-    const gridSize = 3;
-	switch (targetType) {
-		//选择敌人时
-		case "Enemy Grid Node":
-			if (!isEnemy || gridSelectWindowIndex % (2 * gridSize) >= gridSize) {
-				return false;
-			}
-			const targetNodeFlank = Math.floor(gridSelectWindowIndex / (2 * gridSize)) + 1;
-			const targetNodeRank = gridSize - (gridSelectWindowIndex % gridSize);
-			//一列
-			if (aoeType.includes("敌方一列")) {
-				return battlerRank === targetNodeRank;
-			}
-			//一行
-			if (aoeType.includes("敌方一行")) {
-				return battlerFlank === targetNodeFlank;
-			}
-			/** 
-			 * 中圆
-			 * ●●●
-			 * ●×●
-			 * ●●●
-			 */
-			if (aoeType.includes("敌方中圆") || aoeType.includes("敌方方形")) {
-				return (battlerRank >= targetNodeRank - 1 && battlerRank <= targetNodeRank + 1) && (battlerFlank >= targetNodeFlank - 1 && battlerFlank <= targetNodeFlank + 1);
-			}
-			/** 
-			 * 小圆范围
-			 *  ●
-			 * ●×●
-			 *  ●
-			 */
-			else if (aoeType.includes("敌方小圆")) {
-				return (battlerFlank === targetNodeFlank - 1 && battlerRank === targetNodeRank) || (battlerFlank === targetNodeFlank + 1 && battlerRank === targetNodeRank)
-				 || (battlerFlank === targetNodeFlank && battlerRank === targetNodeRank - 1) || (battlerFlank === targetNodeFlank && battlerRank === targetNodeRank + 1)
-				 || (battlerFlank === targetNodeFlank && battlerRank === targetNodeRank);
-			}
-			/** 
-			 * 大圆范围
-			 *   ●
-			 *  ●●●
-			 * ●●×●●
-			 *  ●●●
-			 *   ●
-			 */
-			else if (aoeType.includes("敌方大圆")) {
-				return (battlerRank === targetNodeRank) || (battlerRank >= targetNodeRank - 1 && battlerRank <= targetNodeRank + 1 && battlerFlank >= targetNodeFlank - 1 && battlerFlank <= targetNodeFlank + 1)
-				 || ((battlerRank === targetNodeRank - 2 || battlerRank === targetNodeRank + 2) && battlerFlank === targetNodeFlank);
-			}
-			break;
-		//选择我方时
-		case "Ally Grid Node":
-			if (isEnemy || gridSelectWindowIndex % (2 * gridSize) < gridSize) {
-				return false;
-			}
-			const targetAllyNodeFlank = Math.floor(gridSelectWindowIndex / (2 * gridSize)) + 1;
-			const targetAllyNodeRank = (gridSelectWindowIndex % gridSize) + 1;
-			/** 
-			 * 中圆范围
-			 * ●●●
-			 * ●×●
-			 * ●●●
-			 */
-			if (aoeType.includes("我方中圆") || aoeType.includes("我方方形")) {
-				return (battlerRank >= targetAllyNodeRank - 1 && battlerRank <= targetAllyNodeRank + 1) && (battlerFlank >= targetAllyNodeFlank - 1 && battlerFlank <= targetAllyNodeFlank + 1);
-			}
-			/** 
-			 * 小圆范围
-			 *  ●
-			 * ●×●
-			 *  ●
-			 */
-			else if (aoeType.includes("我方小圆")) {
-				return (battlerFlank === targetAllyNodeFlank - 1 && battlerRank === targetAllyNodeRank) || (battlerFlank === targetAllyNodeFlank + 1 && battlerRank === targetAllyNodeRank)
-					|| (battlerFlank === targetAllyNodeFlank && battlerRank === targetAllyNodeRank - 1) || (battlerFlank === targetAllyNodeFlank && battlerRank === targetAllyNodeRank + 1)
-                    || (battlerFlank === targetAllyNodeFlank && battlerRank === targetAllyNodeRank);
-			}
-			/** 
-			 * 大圆范围
-			 *   ●
-			 *  ●●●
-			 * ●●×●●
-			 *  ●●●
-			 *   ●
-			 */
-			else if (aoeType.includes("我方大圆")) {
-				return (battlerRank === targetAllyNodeRank) || (battlerRank >= targetAllyNodeRank - 1 && battlerRank <= targetAllyNodeRank + 1 && battlerFlank >= targetAllyNodeFlank - 1 
-					&& battlerFlank <= targetAllyNodeFlank + 1)
-					|| ((battlerRank === targetAllyNodeRank - 2 || battlerRank === targetAllyNodeRank + 2) && battlerFlank === targetAllyNodeFlank);
-			}
-			break;
-		default:
-			break;
-	}
-	return false;
-}
+if (Imported.VisuMZ_2_BattleGridSystem) {
+    //判断battler是否在当前技能所选的网格范围内
+    function checkGridSelection(gridSelectWindowIndex, battlerRank, battlerFlank, aoeType, targetType, isEnemy) {
+        if (targetType == null) {
+            return false;
+        }
+        const gridSize = 3;
+        switch (targetType) {
+            //选择敌人时
+            case "Enemy Grid Node":
+                if (!isEnemy || gridSelectWindowIndex % (2 * gridSize) >= gridSize) {
+                    return false;
+                }
+                const targetNodeFlank = Math.floor(gridSelectWindowIndex / (2 * gridSize)) + 1;
+                const targetNodeRank = gridSize - (gridSelectWindowIndex % gridSize);
+                //一列
+                if (aoeType.includes("敌方一列")) {
+                    return battlerRank === targetNodeRank;
+                }
+                //一行
+                if (aoeType.includes("敌方一行")) {
+                    return battlerFlank === targetNodeFlank;
+                }
+                /** 
+                 * 中圆
+                 * ●●●
+                 * ●×●
+                 * ●●●
+                 */
+                if (aoeType.includes("敌方中圆") || aoeType.includes("敌方方形")) {
+                    return (battlerRank >= targetNodeRank - 1 && battlerRank <= targetNodeRank + 1) && (battlerFlank >= targetNodeFlank - 1 && battlerFlank <= targetNodeFlank + 1);
+                }
+                /** 
+                 * 小圆范围
+                 *  ●
+                 * ●×●
+                 *  ●
+                 */
+                else if (aoeType.includes("敌方小圆")) {
+                    return (battlerFlank === targetNodeFlank - 1 && battlerRank === targetNodeRank) || (battlerFlank === targetNodeFlank + 1 && battlerRank === targetNodeRank)
+                    || (battlerFlank === targetNodeFlank && battlerRank === targetNodeRank - 1) || (battlerFlank === targetNodeFlank && battlerRank === targetNodeRank + 1)
+                    || (battlerFlank === targetNodeFlank && battlerRank === targetNodeRank);
+                }
+                /** 
+                 * 大圆范围
+                 *   ●
+                 *  ●●●
+                 * ●●×●●
+                 *  ●●●
+                 *   ●
+                 */
+                else if (aoeType.includes("敌方大圆")) {
+                    return (battlerRank === targetNodeRank) || (battlerRank >= targetNodeRank - 1 && battlerRank <= targetNodeRank + 1 && battlerFlank >= targetNodeFlank - 1 && battlerFlank <= targetNodeFlank + 1)
+                    || ((battlerRank === targetNodeRank - 2 || battlerRank === targetNodeRank + 2) && battlerFlank === targetNodeFlank);
+                }
+                break;
+            //选择我方时
+            case "Ally Grid Node":
+                if (isEnemy || gridSelectWindowIndex % (2 * gridSize) < gridSize) {
+                    return false;
+                }
+                const targetAllyNodeFlank = Math.floor(gridSelectWindowIndex / (2 * gridSize)) + 1;
+                const targetAllyNodeRank = (gridSelectWindowIndex % gridSize) + 1;
+                /** 
+                 * 中圆范围
+                 * ●●●
+                 * ●×●
+                 * ●●●
+                 */
+                if (aoeType.includes("我方中圆") || aoeType.includes("我方方形")) {
+                    return (battlerRank >= targetAllyNodeRank - 1 && battlerRank <= targetAllyNodeRank + 1) && (battlerFlank >= targetAllyNodeFlank - 1 && battlerFlank <= targetAllyNodeFlank + 1);
+                }
+                /** 
+                 * 小圆范围
+                 *  ●
+                 * ●×●
+                 *  ●
+                 */
+                else if (aoeType.includes("我方小圆")) {
+                    return (battlerFlank === targetAllyNodeFlank - 1 && battlerRank === targetAllyNodeRank) || (battlerFlank === targetAllyNodeFlank + 1 && battlerRank === targetAllyNodeRank)
+                        || (battlerFlank === targetAllyNodeFlank && battlerRank === targetAllyNodeRank - 1) || (battlerFlank === targetAllyNodeFlank && battlerRank === targetAllyNodeRank + 1)
+                        || (battlerFlank === targetAllyNodeFlank && battlerRank === targetAllyNodeRank);
+                }
+                /** 
+                 * 大圆范围
+                 *   ●
+                 *  ●●●
+                 * ●●×●●
+                 *  ●●●
+                 *   ●
+                 */
+                else if (aoeType.includes("我方大圆")) {
+                    return (battlerRank === targetAllyNodeRank) || (battlerRank >= targetAllyNodeRank - 1 && battlerRank <= targetAllyNodeRank + 1 && battlerFlank >= targetAllyNodeFlank - 1 
+                        && battlerFlank <= targetAllyNodeFlank + 1)
+                        || ((battlerRank === targetAllyNodeRank - 2 || battlerRank === targetAllyNodeRank + 2) && battlerFlank === targetAllyNodeFlank);
+                }
+                break;
+            default:
+                break;
+        }
+        return false;
+    }
 
-CTB_Gauge.prototype.updateGridSelection = function() {
-    //选择网格的情形
-    this._gridSelectedBattlers = [];
-    let currentActor = BattleManager._currentActor;
-    if (currentActor && currentActor._actions.length > 0 && $scene.isAnyGridWindowActive()) {
-        let currentUsedItem = currentActor._actions[0]._item;
-        if (currentUsedItem._itemId > 0 && currentUsedItem._dataClass === "skill") {
-            let currentSkill = $dataSkills[currentUsedItem._itemId];
-            // 使用正则表达式匹配标签之间的内容
-            let regex = /<Area of Effect>([\s\S]*?)<\/Area of Effect>/;
-            let matched = regex.exec(currentSkill.note);
-            let aoeType = currentSkill.meta["技能范围"];
-            let targetType = currentSkill.meta["Target"] == null ? null : currentSkill.meta["Target"].trim();
-            if (targetType != null) {
-                if (targetType.includes("Grid Flank")) {
-                    for (let battler of this._battlers) {
-                        battler._selected = checkGridSelection($scene._gridSelectFlankWindow.index(), battler._gridLocation["rank"], battler._gridLocation["flank"], 
-                        aoeType, targetType, battler.isEnemy());
+    CTB_Gauge.prototype.updateGridSelection = function() {
+        //选择网格的情形
+        this._gridSelectedBattlers = [];
+        let currentActor = BattleManager._currentActor;
+        if (currentActor && currentActor._actions.length > 0 && $scene.isAnyGridWindowActive()) {
+            let currentUsedItem = currentActor._actions[0]._item;
+            if (currentUsedItem._itemId > 0 && currentUsedItem._dataClass === "skill") {
+                let currentSkill = $dataSkills[currentUsedItem._itemId];
+                // 使用正则表达式匹配标签之间的内容
+                let aoeType = currentSkill.meta["技能范围"];
+                let targetType = currentSkill.meta["Target"] == null ? null : currentSkill.meta["Target"].trim();
+                if (aoeType != null && targetType != null) {
+                    if (targetType.includes("Grid Flank")) {
+                        for (let battler of this._battlers) {
+                            battler._selected = checkGridSelection($scene._gridSelectFlankWindow.index(), battler._gridLocation["rank"], battler._gridLocation["flank"], 
+                            aoeType, targetType, battler.isEnemy());
+                        }
                     }
-                }
-                else if (targetType.includes("Grid Rank")) {
-                    for (let battler of this._battlers) {
-                        battler._selected = checkGridSelection($scene._gridSelectRankWindow.index(), battler._gridLocation["rank"], battler._gridLocation["flank"], 
-                        aoeType, targetType, battler.isEnemy());
+                    else if (targetType.includes("Grid Rank")) {
+                        for (let battler of this._battlers) {
+                            battler._selected = checkGridSelection($scene._gridSelectRankWindow.index(), battler._gridLocation["rank"], battler._gridLocation["flank"], 
+                            aoeType, targetType, battler.isEnemy());
+                        }
                     }
-                }
-                else if (targetType.includes("Grid Node")) {
-                    for (let battler of this._battlers) {
-                        battler._selected = checkGridSelection($scene._gridSelectNodeWindow.index(), battler._gridLocation["rank"], battler._gridLocation["flank"], 
-                        aoeType, targetType, battler.isEnemy());
+                    else if (targetType.includes("Grid Node")) {
+                        for (let battler of this._battlers) {
+                            battler._selected = checkGridSelection($scene._gridSelectNodeWindow.index(), battler._gridLocation["rank"], battler._gridLocation["flank"], 
+                            aoeType, targetType, battler.isEnemy());
+                        }
                     }
                 }
             }
         }
     }
-}
 
-const _alderpaw_sceneBattle_onGridSelectNodeCancel = Scene_Battle.prototype.onGridSelectNodeCancel;
-Scene_Battle.prototype.onGridSelectNodeCancel = function() {
-    _alderpaw_sceneBattle_onGridSelectNodeCancel.call(this);
-    if (this._ctbGauge && this._ctbGauge._battlers) {
-        for (let battler of this._ctbGauge._battlers) {
-            battler._selected = false;
+    const _alderpaw_sceneBattle_onGridSelectNodeCancel = Scene_Battle.prototype.onGridSelectNodeCancel;
+    Scene_Battle.prototype.onGridSelectNodeCancel = function() {
+        _alderpaw_sceneBattle_onGridSelectNodeCancel.call(this);
+        if (this._ctbGauge && this._ctbGauge._battlers) {
+            for (let battler of this._ctbGauge._battlers) {
+                battler._selected = false;
+            }
+            //$scene._ctbGauge.refreshBattlers(null, false, BattleManager._currentActor);
         }
-        //$scene._ctbGauge.refreshBattlers(null, false, BattleManager._currentActor);
+        //S爆发
+        if (BattleManager._sBreakActors.length > 0) {
+            this._specialSkillWindow.show();
+            this._specialSkillWindow.activate();
+            this._specialSkillWindow.select(0);
+        }
+        //关闭敌人信息窗口
+        if ($scene._enemySimpleInfoWindow != null) {
+            $scene._enemySimpleInfoWindow.hide();
+        }
+        if ($scene._enemyDetailedInfoWindow != null) {
+            $scene._enemyDetailedInfoWindow.hide();
+        }
+        for (const actor of $gameParty.battleMembers()) {
+            actor._anchorSelected = false;
+        }
     }
-    //S爆发
-    if (BattleManager._sBreakActors.length > 0) {
-        this._specialSkillWindow.show();
-        this._specialSkillWindow.activate();
-        this._specialSkillWindow.select(0);
-    }
-    //关闭敌人信息窗口
-    if ($scene._enemySimpleInfoWindow != null) {
-        $scene._enemySimpleInfoWindow.hide();
-    }
-    if ($scene._enemyDetailedInfoWindow != null) {
-        $scene._enemyDetailedInfoWindow.hide();
-    }
-    for (const actor of $gameParty.battleMembers()) {
-        actor._anchorSelected = false;
-    }
-}
-
-const _alderpaw_sceneBattle_onGridSelectNodeOk = Scene_Battle.prototype.onGridSelectNodeOk;
-Scene_Battle.prototype.onGridSelectNodeOk = function() {
-    _alderpaw_sceneBattle_onGridSelectNodeOk.call(this);
-    for (const actor of $gameParty.battleMembers()) {
-        actor._anchorSelected = false;
+    
+    const _alderpaw_sceneBattle_onGridSelectNodeOk = Scene_Battle.prototype.onGridSelectNodeOk;
+    Scene_Battle.prototype.onGridSelectNodeOk = function() {
+        _alderpaw_sceneBattle_onGridSelectNodeOk.call(this);
+        for (const actor of $gameParty.battleMembers()) {
+            actor._anchorSelected = false;
+        }
     }
 }
 
@@ -808,382 +998,191 @@ CTB_Gauge.prototype.refreshBattlers = function(tempBattler=null, isAction=false,
         return;
     }
 
-    if (Alderpaw.ctbLayoutMode) {
-        //排完序后创建sprite
-        for (let i = 0; i < this._battlers.length; i++) {
-            if (this._battlers[i].isEnemy()) {
-                this._battlerFaces.push(new Sprite(ImageManager.loadSvEnemy(this._battlers[i].battlerName())));
-            }
-            else {
-                this._battlerFaces.push(new Sprite(ImageManager.loadFace(this._battlers[i].faceName())));
-            }
-            this._battlerMagicHints.push(new Sprite(new Bitmap(60, 84)));
-            this._currentPosAnchors.push(new Sprite(ImageManager.loadSystem(Alderpaw.ctbCurrentAnchorImg)))
-            this._predictPosAnchors.push(new Sprite(ImageManager.loadSystem(Alderpaw.ctbPredictAnchorImg)))
-            this._battlerMagicHints[i].bitmap.fontSize = 20;
-            if (BattleManager._sBreakActors.includes(this._battlers[i])) {
-                this._battlerMagicHints[i].bitmap.textColor = "#FF0060";
-            }
-            else {
-                this._battlerMagicHints[i].bitmap.textColor = "#00FF60";
-            }
-            this._currentPosAnchors[i].visible = false;
-            this._predictPosAnchors[i].visible = false;
-            this._currentPosAnchors[i].y = 16;
-            this._predictPosAnchors[i].y = 16;
-            //console.log(this._battlers[i].name(), this._battlers[i]._actionTime, this._battlers[i].canInput(), this._battlers[i]._tpbState);
-        }
-        //开始画ctb条
-        //首先画背景色和矩形框
-        this._layout.children = [];
-        this._layout.bitmap.clear();
-        this._layout.bitmap.fillRect(0, 36, Math.min(1200, (Alderpaw.ctbMaxShowNum + 2.7) * 48), 68, ColorManager.textColor(19));
-        if (this._battlers[0].isEnemy()) {
-            this._layout.bitmap.fillRect(0, 40, 60, 60, ColorManager.textColor(14));
-            this._layout.bitmap.fillRect(4, 44, 52, 52, ColorManager.textColor(18));
-            this._layout.bitmap.fillRect(6, 46, 48, 48, ColorManager.textColor(25));
+    //排完序后创建sprite
+    for (let i = 0; i < this._battlers.length; i++) {
+        if (this._battlers[i].isEnemy()) {
+            this._battlerFaces.push(new Sprite(ImageManager.loadSvEnemy(this._battlers[i].battlerName())));
         }
         else {
-            this._layout.bitmap.fillRect(0, 40, 60, 60, ColorManager.textColor(14));
-            this._layout.bitmap.fillRect(4, 44, 52, 52, ColorManager.textColor(22));
-            this._layout.bitmap.fillRect(6, 46, 48, 48, ColorManager.textColor(16));
+            this._battlerFaces.push(new Sprite(ImageManager.loadFace(this._battlers[i].faceName())));
         }
-        //画当前行动的角色
-        if (this._battlers[0].isActor()) {
-            this._battlerFaces[0].setFrame(24 + (this._battlers[0]._faceIndex % 4) * 144, 24 + Math.floor(this._battlers[0]._faceIndex / 4) * 144, 96, 96);
-        }
-        else {
-            this._battlerFaces[0].setFrame(24, 0, 96, 96);
-        }
-        this._battlerFaces[0].scale.x = 0.5;
-        this._battlerFaces[0].scale.y = 0.5;
-        this._battlerFaces[0].x = 6;
-        this._battlerFaces[0].y = 46;
-        this._battlerMagicHints[0].x = 10;
-        this._battlerMagicHints[0].y = 26;
-        this._layout.addChild(this._battlerFaces[0]);
-        this._layout.addChild(this._battlerMagicHints[0]);
-        this._layout.addChild(this._currentPosAnchors[0]);
-        this._layout.addChild(this._predictPosAnchors[0]);
-        if (this._battlers[0]._tpbState === "casting") {
-            this._battlerMagicHints[0].bitmap.drawText("M", 18, 42, 32, 32, "center");
-        }
-        else if (BattleManager._sBreakActors.includes(this._battlers[0])) {
-            this._battlerMagicHints[0].bitmap.drawText("S", 18, 42, 32, 32, "center");
+        this._battlerMagicHints.push(new Sprite(new Bitmap(60, 84)));
+        this._currentPosAnchors.push(new Sprite(ImageManager.loadSystem(Alderpaw.ctbCurrentAnchorImg)))
+        this._predictPosAnchors.push(new Sprite(ImageManager.loadSystem(Alderpaw.ctbPredictAnchorImg)))
+        this._battlerMagicHints[i].bitmap.fontSize = 20;
+        if (BattleManager._sBreakActors.includes(this._battlers[i])) {
+            this._battlerMagicHints[i].bitmap.textColor = "#FF0060";
         }
         else {
-            this._battlerMagicHints[0].bitmap.clear();
+            this._battlerMagicHints[i].bitmap.textColor = "#00FF60";
         }
-        //画行动条后面的角色
-        let isTempBattleShown = false;
-        for (let i = 1; i < Math.min(this._battlers.length, Alderpaw.ctbMaxShowNum + 1); i++) {
-            this._layout.addChild(this._battlerFaces[i]);
-            this._layout.addChild(this._battlerMagicHints[i]);
-            this._layout.addChild(this._currentPosAnchors[i]);
-            this._layout.addChild(this._predictPosAnchors[i]);
-            if (this._battlers[i]._tpbState === "casting") {
-                this._battlerMagicHints[i].bitmap.drawText("M", 18, 42, 32, 32, "center");
-            }
-            else if (BattleManager._sBreakActors.includes(this._battlers[i])) {
-                this._battlerMagicHints[i].bitmap.drawText("S", 18, 42, 32, 32, "center");
-            }
-            else {
-                this._battlerMagicHints[i].bitmap.clear();
-            }
-            if (this._battlers[i].isEnemy()) {
-                this._layout.bitmap.fillRect(76 + 52 * (i - 1), 44, 52, 52, ColorManager.textColor(18));
-                this._layout.bitmap.fillRect(78 + 52 * (i - 1), 46, 48, 48, ColorManager.textColor(25));
-            }
-            else {
-                this._layout.bitmap.fillRect(76 + 52 * (i - 1), 44, 52, 52, ColorManager.textColor(22));
-                this._layout.bitmap.fillRect(78 + 52 * (i - 1), 46, 48, 48, ColorManager.textColor(16));
-            }
-            if (this._battlers[i].isActor()) {
-                this._battlerFaces[i].setFrame(24 + (this._battlers[i]._faceIndex % 4) * 144, 24 + Math.floor(this._battlers[i]._faceIndex / 4) * 144, 96, 96);
-            }
-            else {
-                this._battlerFaces[i].setFrame(24, 0, 96, 96);
-            }
-            this._battlerFaces[i].scale.x = 0.5;
-            this._battlerFaces[i].scale.y = 0.5;
-            this._battlerFaces[i].x = 78 + 52 * (i - 1);
-            this._battlerFaces[i].y = 46;
-            this._battlerMagicHints[i].x = 82 + 52 * (i - 1);
-            this._battlerMagicHints[i].y = 26;
+        this._currentPosAnchors[i].visible = false;
+        this._predictPosAnchors[i].visible = false;
+        this._currentPosAnchors[i].y = 16;
+        this._predictPosAnchors[i].y = 16;
+        //console.log(this._battlers[i].name(), this._battlers[i]._actionTime, this._battlers[i].canInput(), this._battlers[i]._tpbState);
+    }
+    //开始画ctb条
+    //首先画背景色和矩形框
+    this._layout.children = [];
+    this._layout.bitmap.clear();
+    this._layout.bitmap.fillRect(0, 36, Math.min(1200, (Alderpaw.ctbMaxShowNum + 2.7) * 48), 68, ColorManager.textColor(19));
+    if (this._battlers[0].isEnemy()) {
+        this._layout.bitmap.fillRect(0, 40, 60, 60, ColorManager.textColor(14));
+        this._layout.bitmap.fillRect(4, 44, 52, 52, ColorManager.textColor(18));
+        this._layout.bitmap.fillRect(6, 46, 48, 48, ColorManager.textColor(25));
+    }
+    else {
+        this._layout.bitmap.fillRect(0, 40, 60, 60, ColorManager.textColor(14));
+        this._layout.bitmap.fillRect(4, 44, 52, 52, ColorManager.textColor(22));
+        this._layout.bitmap.fillRect(6, 46, 48, 48, ColorManager.textColor(16));
+    }
+    //画当前行动的角色
+    if (this._battlers[0].isActor()) {
+        this._battlerFaces[0].setFrame(24 + (this._battlers[0]._faceIndex % 4) * 144, 24 + Math.floor(this._battlers[0]._faceIndex / 4) * 144, 96, 96);
+    }
+    else {
+        this._battlerFaces[0].setFrame(24, 0, 96, 96);
+    }
+    this._battlerFaces[0].scale.x = 0.5;
+    this._battlerFaces[0].scale.y = 0.5;
+    this._battlerFaces[0].x = 6;
+    this._battlerFaces[0].y = 46;
+    this._battlerMagicHints[0].x = 10;
+    this._battlerMagicHints[0].y = 26;
+    this._layout.addChild(this._battlerFaces[0]);
+    this._layout.addChild(this._battlerMagicHints[0]);
+    this._layout.addChild(this._currentPosAnchors[0]);
+    this._layout.addChild(this._predictPosAnchors[0]);
+    if (this._battlers[0]._tpbState === "casting") {
+        this._battlerMagicHints[0].bitmap.drawText("M", 18, 42, 32, 32, "center");
+    }
+    else if (BattleManager._sBreakActors.includes(this._battlers[0])) {
+        this._battlerMagicHints[0].bitmap.drawText("S", 18, 42, 32, 32, "center");
+    }
+    else {
+        this._battlerMagicHints[0].bitmap.clear();
+    }
+    //画行动条后面的角色
+    let isTempBattleShown = false;
+    for (let i = 1; i < Math.min(this._battlers.length, Alderpaw.ctbMaxShowNum + 1); i++) {
+        this._layout.addChild(this._battlerFaces[i]);
+        this._layout.addChild(this._battlerMagicHints[i]);
+        this._layout.addChild(this._currentPosAnchors[i]);
+        this._layout.addChild(this._predictPosAnchors[i]);
+        if (this._battlers[i]._tpbState === "casting") {
+            this._battlerMagicHints[i].bitmap.drawText("M", 18, 42, 32, 32, "center");
+        }
+        else if (BattleManager._sBreakActors.includes(this._battlers[i])) {
+            this._battlerMagicHints[i].bitmap.drawText("S", 18, 42, 32, 32, "center");
+        }
+        else {
+            this._battlerMagicHints[i].bitmap.clear();
+        }
+        if (this._battlers[i].isEnemy()) {
+            this._layout.bitmap.fillRect(76 + 52 * (i - 1), 44, 52, 52, ColorManager.textColor(18));
+            this._layout.bitmap.fillRect(78 + 52 * (i - 1), 46, 48, 48, ColorManager.textColor(25));
+        }
+        else {
+            this._layout.bitmap.fillRect(76 + 52 * (i - 1), 44, 52, 52, ColorManager.textColor(22));
+            this._layout.bitmap.fillRect(78 + 52 * (i - 1), 46, 48, 48, ColorManager.textColor(16));
+        }
+        if (this._battlers[i].isActor()) {
+            this._battlerFaces[i].setFrame(24 + (this._battlers[i]._faceIndex % 4) * 144, 24 + Math.floor(this._battlers[i]._faceIndex / 4) * 144, 96, 96);
+        }
+        else {
+            this._battlerFaces[i].setFrame(24, 0, 96, 96);
+        }
+        this._battlerFaces[i].scale.x = 0.5;
+        this._battlerFaces[i].scale.y = 0.5;
+        this._battlerFaces[i].x = 78 + 52 * (i - 1);
+        this._battlerFaces[i].y = 46;
+        this._battlerMagicHints[i].x = 82 + 52 * (i - 1);
+        this._battlerMagicHints[i].y = 26;
+        if (tempBattler != null && ((this._battlers[i].isActor() && tempBattler.isActor() && this._battlers[i].actorId() === tempBattler.actorId()) ||
+                                (this._battlers[i].isEnemy() && tempBattler.isEnemy() && this._battlers[i].index() === tempBattler.index()))) {
+            const delayDelta = tempBattler._actionTime;
+            this._currentPosAnchors[i].visible = true;
+            this._predictPosAnchors[i].visible = true;
+            this._currentPosAnchors[i].x = this._battlerFaces[0].x + 14;
+            this._predictPosAnchors[i].x = this._battlerFaces[i].x + 14;
+            //this._delay_anchor.visible = true;
+            this._delay_anchor_num.visible = showDelayNum;
+            //this._delay_anchor.x = this._battlerFaces[i].x + 46;
+            this._delay_anchor_num.x = this._battlerFaces[i].x;
+            this._delay_anchor_num.bitmap.clear();
+            this._delay_anchor_num.bitmap.drawText("DELAY " + Math.round(delayDelta).toString(), -20, -8, 160, 32, "center");
+            this._battlerFaces[i].opacity = 160;
+            continue;
+        }
+        //如果当前的技能/物品带有延迟/加速效果，且遍历到的battler是被选中的目标，则显示被影响后的位置
+        if (effectedBattlers.includes(this._battlers[i])) {
+            this._predictPosAnchors[i].visible = true;
+            this._predictPosAnchors[i].x = this._battlerFaces[i].x + 14;
+            this._battlerFaces[i].opacity = 160;
+            continue;
+        }
+        if (needHighlightTarget && (targets.includes(this._battlers[i]) || this._battlers[i]._selected)) {
+            this._currentPosAnchors[i].visible = true;
+            this._currentPosAnchors[i].x = this._battlerFaces[i].x + 14;
+            continue;
+        }
+    }
+    //如果tempBattler的位置超过了显示上限，那么在最后显示anchor
+    if (!isTempBattleShown && tempBattler != null) {
+        for (let i = Math.min(this._battlers.length, Alderpaw.ctbMaxShowNum + 1); i < this._battlers.length; i++) {
             if (tempBattler != null && ((this._battlers[i].isActor() && tempBattler.isActor() && this._battlers[i].actorId() === tempBattler.actorId()) ||
                                     (this._battlers[i].isEnemy() && tempBattler.isEnemy() && this._battlers[i].index() === tempBattler.index()))) {
                 const delayDelta = tempBattler._actionTime;
                 this._currentPosAnchors[i].visible = true;
                 this._predictPosAnchors[i].visible = true;
                 this._currentPosAnchors[i].x = this._battlerFaces[0].x + 14;
-                this._predictPosAnchors[i].x = this._battlerFaces[i].x + 14;
-                //this._delay_anchor.visible = true;
+                this._predictPosAnchors[i].x = this._battlerFaces[Alderpaw.ctbMaxShowNum].x + 48;
                 this._delay_anchor_num.visible = showDelayNum;
-                //this._delay_anchor.x = this._battlerFaces[i].x + 46;
-                this._delay_anchor_num.x = this._battlerFaces[i].x;
+                this._delay_anchor_num.x = this._battlerFaces[Alderpaw.ctbMaxShowNum].x + 32;
                 this._delay_anchor_num.bitmap.clear();
-                this._delay_anchor_num.bitmap.drawText("DELAY " + Math.round(delayDelta).toString(), -20, -8, 160, 32, "center");
+                this._delay_anchor_num.bitmap.drawText("DELAY " + delayDelta.toString(), -20, -8, 160, 32, "center");
                 this._battlerFaces[i].opacity = 160;
-                continue;
+                isTempBattleShown = true;
+                this._layout.addChild(this._currentPosAnchors[i]);
+                this._layout.addChild(this._predictPosAnchors[i]);
             }
-            //如果当前的技能/物品带有延迟/加速效果，且遍历到的battler是被选中的目标，则显示被影响后的位置
-            if (effectedBattlers.includes(this._battlers[i])) {
-                this._predictPosAnchors[i].visible = true;
-                this._predictPosAnchors[i].x = this._battlerFaces[i].x + 14;
-                this._battlerFaces[i].opacity = 160;
-                continue;
-            }
-            if (needHighlightTarget && (targets.includes(this._battlers[i]) || this._battlers[i]._selected)) {
-                this._currentPosAnchors[i].visible = true;
-                this._currentPosAnchors[i].x = this._battlerFaces[i].x + 14;
-                continue;
-            }
-        }
-        //如果tempBattler的位置超过了显示上限，那么在最后显示anchor
-        if (!isTempBattleShown && tempBattler != null) {
-            for (let i = Math.min(this._battlers.length, Alderpaw.ctbMaxShowNum + 1); i < this._battlers.length; i++) {
-                if (tempBattler != null && ((this._battlers[i].isActor() && tempBattler.isActor() && this._battlers[i].actorId() === tempBattler.actorId()) ||
-                                        (this._battlers[i].isEnemy() && tempBattler.isEnemy() && this._battlers[i].index() === tempBattler.index()))) {
-                    const delayDelta = tempBattler._actionTime;
-                    this._currentPosAnchors[i].visible = true;
-                    this._predictPosAnchors[i].visible = true;
-                    this._currentPosAnchors[i].x = this._battlerFaces[0].x + 14;
-                    this._predictPosAnchors[i].x = this._battlerFaces[Alderpaw.ctbMaxShowNum].x + 48;
-                    this._delay_anchor_num.visible = showDelayNum;
-                    this._delay_anchor_num.x = this._battlerFaces[Alderpaw.ctbMaxShowNum].x + 32;
-                    this._delay_anchor_num.bitmap.clear();
-                    this._delay_anchor_num.bitmap.drawText("DELAY " + delayDelta.toString(), -20, -8, 160, 32, "center");
-                    this._battlerFaces[i].opacity = 160;
-                    isTempBattleShown = true;
-                    this._layout.addChild(this._currentPosAnchors[i]);
-                    this._layout.addChild(this._predictPosAnchors[i]);
-                }
-            }
-        }
-        //画AT奖励
-        //如果当前是action，则让AT奖励也发生流动
-        if (isAction && !isSBreak) {
-            this._currentBonusList.shift();
-            if (Math.random() < Alderpaw.ctbGaugeBonusAppearPossibility) {
-                const weights = this._globalBonusDict.map(({ weight }) => parseInt(weight));
-                const selectedIndex = this.weightedRandom(weights);
-                this._currentBonusList.push(selectedIndex);
-            }
-            else {
-                this._currentBonusList.push(-1);
-            }
-        }
-        for (let i = 0; i < Alderpaw.ctbMaxShowNum + 1; i++) {
-            if (this._currentBonusList[i] === -1) {
-                this._bonusIcons.push(new Sprite());
-                this._bonusIcons[i].visible = false;
-            }
-            else {
-                this._bonusIcons.push(new Sprite(this._iconImg));
-                if (i === 0) {
-                    this._bonusIcons[i].x = 12;
-                }
-                else {
-                    this._bonusIcons[i].x = 86 + 52 * (i - 1);
-                }
-                this._bonusIcons[i].y = 98;
-                let iconId = this._globalBonusDict[this._currentBonusList[i]].iconId;
-                let sx = iconId % 16 * 32;
-                let sy = Math.floor(iconId / 16) * 32;
-                this._bonusIcons[i].setFrame(sx, sy, 32, 32);
-                this._bonusIcons[i].visible = true;
-            }
-            this._layout.addChild(this._bonusIcons[i]);
         }
     }
-
-    else {
-        //排完序后创建sprite
-        for (let i = 0; i < this._battlers.length; i++) {
-            if (this._battlers[i].isEnemy()) {
-                this._battlerFaces.push(new Sprite(ImageManager.loadSvEnemy(this._battlers[i].battlerName())));
-            }
-            else {
-                this._battlerFaces.push(new Sprite(ImageManager.loadFace(this._battlers[i].faceName())));
-            }
-            this._battlerMagicHints.push(new Sprite(new Bitmap(60, 84)));
-            this._currentPosAnchors.push(new Sprite(ImageManager.loadSystem(Alderpaw.ctbCurrentAnchorImg)))
-            this._predictPosAnchors.push(new Sprite(ImageManager.loadSystem(Alderpaw.ctbPredictAnchorImg)))
-            this._battlerMagicHints[i].bitmap.fontSize = 20;
-            if (BattleManager._sBreakActors.includes(this._battlers[i])) {
-                this._battlerMagicHints[i].bitmap.textColor = "#FF0060";
-            }
-            else {
-                this._battlerMagicHints[i].bitmap.textColor = "#00FF60";
-            }
-            this._currentPosAnchors[i].visible = false;
-            this._predictPosAnchors[i].visible = false;
-            this._currentPosAnchors[i].x = 80;
-            this._predictPosAnchors[i].x = 80;
-            //console.log(this._battlers[i].name(), this._battlers[i]._actionTime, this._battlers[i].canInput(), this._battlers[i]._tpbState);
-        }
-        //开始画ctb条
-        //首先画背景色和矩形框
-        this._layout.children = [];
-        this._layout.bitmap.clear();
-        this._layout.bitmap.fillRect(20, 0, 84, Math.min(1200, (Alderpaw.ctbMaxShowNum + 2.7) * 48), ColorManager.textColor(19));
-        if (this._battlers[0].isEnemy()) {
-            this._layout.bitmap.fillRect(32, 0, 60, 60, ColorManager.textColor(14));
-            this._layout.bitmap.fillRect(36, 4, 52, 52, ColorManager.textColor(18));
-            this._layout.bitmap.fillRect(38, 6, 48, 48, ColorManager.textColor(25));
+    //画AT奖励
+    //如果当前是action，则让AT奖励也发生流动
+    if (isAction && !isSBreak) {
+        this._currentBonusList.shift();
+        if (Math.random() < Alderpaw.ctbGaugeBonusAppearPossibility) {
+            const weights = this._globalBonusDict.map(({ weight }) => parseInt(weight));
+            const selectedIndex = this.weightedRandom(weights);
+            this._currentBonusList.push(selectedIndex);
         }
         else {
-            this._layout.bitmap.fillRect(32, 0, 60, 60, ColorManager.textColor(14));
-            this._layout.bitmap.fillRect(36, 4, 52, 52, ColorManager.textColor(22));
-            this._layout.bitmap.fillRect(38, 6, 48, 48, ColorManager.textColor(16));
+            this._currentBonusList.push(-1);
         }
-        //画AT奖励
-        //如果当前是action，则让AT奖励也发生流动
-        if (isAction && !isSBreak) {
-            this._currentBonusList.shift();
-            if (Math.random() < Alderpaw.ctbGaugeBonusAppearPossibility) {
-                const weights = this._globalBonusDict.map(({ weight }) => parseInt(weight));
-                const selectedIndex = this.weightedRandom(weights);
-                this._currentBonusList.push(selectedIndex);
-            }
-            else {
-                this._currentBonusList.push(-1);
-            }
-        }
-        for (let i = 0; i < Alderpaw.ctbMaxShowNum + 1; i++) {
-            if (this._currentBonusList[i] === -1) {
-                this._bonusIcons.push(new Sprite());
-                this._bonusIcons[i].visible = false;
-            }
-            else {
-                this._bonusIcons.push(new Sprite(this._iconImg));
-                if (i === 0) {
-                    this._bonusIcons[i].y = 0;
-                }
-                else {
-                    this._bonusIcons[i].y = 74 + 52 * (i - 1);
-                }
-                this._bonusIcons[i].x = 92;
-                let iconId = this._globalBonusDict[this._currentBonusList[i]].iconId;
-                let sx = iconId % 16 * 32;
-                let sy = Math.floor(iconId / 16) * 32;
-                this._bonusIcons[i].setFrame(sx, sy, 32, 32);
-                this._bonusIcons[i].visible = true;
-            }
-            this._layout.addChild(this._bonusIcons[i]);
-        }
-        //画当前行动的角色
-        if (this._battlers[0].isEnemy()) {
-            this._battlerFaces[0].setFrame(24, 0, 96, 96);
+    }
+    for (let i = 0; i < Alderpaw.ctbMaxShowNum + 1; i++) {
+        if (this._currentBonusList[i] === -1) {
+            this._bonusIcons.push(new Sprite());
+            this._bonusIcons[i].visible = false;
         }
         else {
-            this._battlerFaces[0].setFrame(24 + (this._battlers[0]._faceIndex % 4) * 144, 24 + Math.floor(this._battlers[0]._faceIndex / 4) * 144, 96, 96);
-        }
-        this._battlerFaces[0].scale.x = 0.5;
-        this._battlerFaces[0].scale.y = 0.5;
-        this._battlerFaces[0].x = 38;
-        this._battlerFaces[0].y = 6;
-        this._battlerMagicHints[0].x = 38;
-        this._battlerMagicHints[0].y = 6;
-        this._layout.addChild(this._battlerFaces[0]);
-        this._layout.addChild(this._battlerMagicHints[0]);
-        this._layout.addChild(this._currentPosAnchors[0]);
-        this._layout.addChild(this._predictPosAnchors[0]);
-        if (this._battlers[0]._tpbState === "casting") {
-            this._battlerMagicHints[0].bitmap.drawText("M", 18, 42, 32, 32, "center");
-        }
-        else if (BattleManager._sBreakActors.includes(this._battlers[0])) {
-            this._battlerMagicHints[0].bitmap.drawText("S", 18, 42, 32, 32, "center");
-        }
-        else {
-            this._battlerMagicHints[0].bitmap.clear();
-        }
-        //画行动条后面的角色
-        let isTempBattleShown = false;
-        for (let i = 1; i < Math.min(this._battlers.length, Alderpaw.ctbMaxShowNum + 1); i++) {
-            this._layout.addChild(this._battlerFaces[i]);
-            this._layout.addChild(this._battlerMagicHints[i]);
-            this._layout.addChild(this._currentPosAnchors[i]);
-            this._layout.addChild(this._predictPosAnchors[i]);
-            if (this._battlers[i]._tpbState === "casting") {
-                this._battlerMagicHints[i].bitmap.drawText("M", 18, 20, 32, 32, "center");
-            }
-            else if (BattleManager._sBreakActors.includes(this._battlers[i])) {
-                this._battlerMagicHints[i].bitmap.drawText("S", 18, 42, 32, 32, "center");
+            this._bonusIcons.push(new Sprite(this._iconImg));
+            if (i === 0) {
+                this._bonusIcons[i].x = 12;
             }
             else {
-                this._battlerMagicHints[i].bitmap.clear();
+                this._bonusIcons[i].x = 86 + 52 * (i - 1);
             }
-            if (this._battlers[i].isEnemy()) {
-                this._layout.bitmap.fillRect(36, 64 + 52 * (i - 1), 52, 52, ColorManager.textColor(18));
-                this._layout.bitmap.fillRect(38, 66 + 52 * (i - 1), 48, 48, ColorManager.textColor(25));
-            }
-            else {
-                this._layout.bitmap.fillRect(36, 64 + 52 * (i - 1), 52, 52, ColorManager.textColor(22));
-                this._layout.bitmap.fillRect(38, 66 + 52 * (i - 1), 48, 48, ColorManager.textColor(16));
-            }
-            if (this._battlers[i].isEnemy()) {
-                this._battlerFaces[i].setFrame(24, 0, 96, 96);
-            }
-            else {
-                this._battlerFaces[i].setFrame(24 + (this._battlers[i]._faceIndex % 4) * 144, 24 + Math.floor(this._battlers[i]._faceIndex / 4) * 144, 96, 96);
-            }
-            this._battlerFaces[i].scale.x = 0.5;
-            this._battlerFaces[i].scale.y = 0.5;
-            this._battlerFaces[i].y = 64 + 52 * (i - 1);
-            this._battlerFaces[i].x = 38;
-            this._battlerMagicHints[i].y = 64 + 52 * (i - 1);
-            this._battlerMagicHints[i].x = 38;
-            if (tempBattler != null && ((this._battlers[i].isActor() && tempBattler.isActor() && this._battlers[i].actorId() === tempBattler.actorId()) ||
-                                    (this._battlers[i].isEnemy() && tempBattler.isEnemy() && this._battlers[i].index() === tempBattler.index()))) {
-                const delayDelta = tempBattler._actionTime;
-                this._currentPosAnchors[i].visible = true;
-                this._predictPosAnchors[i].visible = true;
-                this._currentPosAnchors[i].y = this._battlerFaces[0].y + 14;
-                this._predictPosAnchors[i].y = this._battlerFaces[i].y + 14;
-                //this._delay_anchor.visible = true;
-                this._delay_anchor_num.visible = showDelayNum;
-                //this._delay_anchor.x = this._battlerFaces[i].x + 46;
-                this._delay_anchor_num.y = this._battlerFaces[i].y + 16;
-                this._delay_anchor_num.bitmap.clear();
-                this._delay_anchor_num.bitmap.drawText("DELAY " + Math.round(delayDelta).toString(), 0, 0, 160, 32, "center");
-                this._battlerFaces[i].opacity = 160;
-                continue;
-            }
-            //如果当前的技能/物品带有延迟/加速效果，且遍历到的battler是被选中的目标，则显示被影响后的位置
-            if (effectedBattlers.includes(this._battlers[i])) {
-                this._predictPosAnchors[i].visible = true;
-                this._predictPosAnchors[i].y = this._battlerFaces[i].y + 14;
-                this._battlerFaces[i].opacity = 160;
-                continue;
-            }
-            if (needHighlightTarget && (targets.includes(this._battlers[i]) || this._battlers[i]._selected)) {
-                this._currentPosAnchors[i].visible = true;
-                this._currentPosAnchors[i].y = this._battlerFaces[i].y + 14;
-                continue;
-            }
+            this._bonusIcons[i].y = 98;
+            let iconId = this._globalBonusDict[this._currentBonusList[i]].iconId;
+            let sx = iconId % 16 * 32;
+            let sy = Math.floor(iconId / 16) * 32;
+            this._bonusIcons[i].setFrame(sx, sy, 32, 32);
+            this._bonusIcons[i].visible = true;
         }
-        //如果tempBattler的位置超过了显示上限，那么在最后显示anchor
-        if (!isTempBattleShown && tempBattler != null) {
-            for (let i = Math.min(this._battlers.length, Alderpaw.ctbMaxShowNum + 1); i < this._battlers.length; i++) {
-                if (tempBattler != null && ((this._battlers[i].isActor() && tempBattler.isActor() && this._battlers[i].actorId() === tempBattler.actorId()) ||
-                                        (this._battlers[i].isEnemy() && tempBattler.isEnemy() && this._battlers[i].index() === tempBattler.index()))) {
-                    const delayDelta = tempBattler._actionTime;
-                    this._currentPosAnchors[i].visible = true;
-                    this._predictPosAnchors[i].visible = true;
-                    this._currentPosAnchors[i].y = this._battlerFaces[0].y + 14;
-                    this._predictPosAnchors[i].y = this._battlerFaces[Alderpaw.ctbMaxShowNum].y + 52;
-                    this._delay_anchor_num.visible = showDelayNum;
-                    this._delay_anchor_num.y = this._battlerFaces[Alderpaw.ctbMaxShowNum].y + 54;
-                    this._delay_anchor_num.bitmap.clear();
-                    this._delay_anchor_num.bitmap.drawText("DELAY " + delayDelta.toString(), 0, 0, 160, 32, "center");
-                    this._battlerFaces[i].opacity = 160;
-                    isTempBattleShown = true;
-                    this._layout.addChild(this._currentPosAnchors[i]);
-                    this._layout.addChild(this._predictPosAnchors[i]);
-                }
-            }
-        }
+        this._layout.addChild(this._bonusIcons[i]);
     }
 
     //最后，更新这些battler的ctb状态
@@ -1362,16 +1361,18 @@ Window_ActorCommand.prototype.select = function(index) {
     }
 };
 
-const _alderpaw_ctb_sceneBattleOnSkillCancel= Scene_Battle.prototype.onSkillCancel;
-Scene_Battle.prototype.onSkillCancel = function() {
-    _alderpaw_ctb_sceneBattleOnSkillCancel.call(this);
-    if (this._ctbGauge && !this.isAnyGridWindowActive() && !this._actorWindow.active && !this._enemyWindow.active) {
-        this._ctbGauge.refreshBattlers(null, false, this._actor);
-        for (let i = 0; i < $scene._ctbGauge._currentPosAnchors.length; i++) {
-            $scene._ctbGauge._currentPosAnchors[i].visible = false;
-            $scene._ctbGauge._predictPosAnchors[i].visible = false;
+if (Imported.VisuMZ_2_BattleGridSystem) {
+    const _alderpaw_ctb_sceneBattleOnSkillCancel= Scene_Battle.prototype.onSkillCancel;
+    Scene_Battle.prototype.onSkillCancel = function() {
+        _alderpaw_ctb_sceneBattleOnSkillCancel.call(this);
+        if (this._ctbGauge && !this.isAnyGridWindowActive() && !this._actorWindow.active && !this._enemyWindow.active) {
+            this._ctbGauge.refreshBattlers(null, false, this._actor);
+            for (let i = 0; i < $scene._ctbGauge._currentPosAnchors.length; i++) {
+                $scene._ctbGauge._currentPosAnchors[i].visible = false;
+                $scene._ctbGauge._predictPosAnchors[i].visible = false;
+            }
+            $scene._ctbGauge._delay_anchor_num.visible = false;
         }
-        $scene._ctbGauge._delay_anchor_num.visible = false;
     }
 }
 
@@ -1429,26 +1430,28 @@ Window_BattleEnemy.prototype.select = function(index) {
             }
 		}
         //目标指定的技能范围
-        if (item.meta["目标指定"]) {
+        if (Imported.VisuMZ_2_BattleGridSystem && item.meta["目标指定"]) {
             this.changeScopeTargetSelection(item);
         }
 	}
 }
 
 //目标指定时，检查范围内是否有其他目标
-Window_BattleEnemy.prototype.changeScopeTargetSelection = function(item) {
-    if (this.enemy() == null || item == null || item.meta["技能范围"] == null) {
-        return;
-    }
-    const anchorEnemy = this.enemy();
-    anchorEnemy._anchorSelected = true;
-    for (const enemy of this._enemies) {
-        if (enemy.index() === anchorEnemy.index()) {
-            continue;
+if (Imported.VisuMZ_2_BattleGridSystem) {
+    Window_BattleEnemy.prototype.changeScopeTargetSelection = function(item) {
+        if (this.enemy() == null || item == null || item.meta["技能范围"] == null) {
+            return;
         }
-        enemy._anchorSelected = false;
-        if (checkScopeTarget(anchorEnemy, enemy, item)) {
-            enemy._selected = true;
+        const anchorEnemy = this.enemy();
+        anchorEnemy._anchorSelected = true;
+        for (const enemy of this._enemies) {
+            if (enemy.index() === anchorEnemy.index()) {
+                continue;
+            }
+            enemy._anchorSelected = false;
+            if (checkScopeTarget(anchorEnemy, enemy, item)) {
+                enemy._selected = true;
+            }
         }
     }
 }
@@ -1515,26 +1518,28 @@ Window_BattleActor.prototype.select = function(index) {
             }
 		}
         //目标指定的技能范围
-        if (item.meta["目标指定"]) {
+        if (Imported.VisuMZ_2_BattleGridSystem && item.meta["目标指定"]) {
             this.changeScopeTargetSelection(item);
         }
 	}
 }
 
 //目标指定时，检查范围内是否有其他目标
-Window_BattleActor.prototype.changeScopeTargetSelection = function(item) {
-    if (this.actor(this.index()) == null || item == null || item.meta["技能范围"] == null) {
-        return;
-    }
-    const anchorActor = this.actor(this.index());
-    anchorActor._anchorSelected = true;
-    for (const actor of $gameParty.battleMembers()) {
-        if (actor.actorId() === anchorActor.actorId()) {
-            continue;
+if (Imported.VisuMZ_2_BattleGridSystem) {
+    Window_BattleActor.prototype.changeScopeTargetSelection = function(item) {
+        if (this.actor(this.index()) == null || item == null || item.meta["技能范围"] == null) {
+            return;
         }
-        actor._anchorSelected = false;
-        if (checkScopeTarget(anchorActor, actor, item)) {
-            actor._selected = true;
+        const anchorActor = this.actor(this.index());
+        anchorActor._anchorSelected = true;
+        for (const actor of $gameParty.battleMembers()) {
+            if (actor.actorId() === anchorActor.actorId()) {
+                continue;
+            }
+            actor._anchorSelected = false;
+            if (checkScopeTarget(anchorActor, actor, item)) {
+                actor._selected = true;
+            }
         }
     }
 }
@@ -1547,111 +1552,114 @@ Window_BattleActor.prototype.hide = function() {
     }
 }
 
-/**
- * 
- * @param {*} anchorBattler 选中的目标，圆心
- * @param {*} battler 要判断是否在范围内的其他目标
- * @param {*} item 技能或物品
- * @returns 
- */
-function checkScopeTarget(anchorBattler, battler, item) {
-    if (anchorBattler == null || battler == null || item == null || item.meta["技能范围"] == null) {
-        return false;
-    }
-    const anchorPointRow = anchorBattler._gridLocation.flank;
-    const anchorPointCol = anchorBattler._gridLocation.rank;
-    const startRow = battler._gridLocation.flank;
-    const endRow = battler.isEnemy() ? battler._gridLocation.flank + battler._gridSize.flank - 1 : startRow;
-    const startCol = battler._gridLocation.rank;
-    const endCol = battler.isEnemy() ? battler._gridLocation.rank + battler._gridSize.rank - 1 : startCol;
-    if (item.meta["技能范围"].includes("小圆")) {
-        const areaPoints = [
-            {"row": anchorPointRow, "col": anchorPointCol},
-            {"row": anchorPointRow + 1, "col": anchorPointCol},
-            {"row": anchorPointRow, "col": anchorPointCol + 1},
-            {"row": anchorPointRow - 1, "col": anchorPointCol},
-            {"row": anchorPointRow, "col": anchorPointCol - 1}
-        ];
-        for (const point of areaPoints) {
-            if (point.row >= startRow && point.row <= endRow && point.col >= startCol && point.col <= endCol) {
-                return true;
-            }
-        }
-        return false;
-    }
-    else if (item.meta["技能范围"].includes("中圆")) {
-        const areaPoints = [
-            {"row": anchorPointRow, "col": anchorPointCol},
-            {"row": anchorPointRow + 1, "col": anchorPointCol},
-            {"row": anchorPointRow, "col": anchorPointCol + 1},
-            {"row": anchorPointRow - 1, "col": anchorPointCol},
-            {"row": anchorPointRow, "col": anchorPointCol - 1},
-            {"row": anchorPointRow - 1, "col": anchorPointCol - 1},
-            {"row": anchorPointRow - 1, "col": anchorPointCol + 1},
-            {"row": anchorPointRow + 1, "col": anchorPointCol - 1},
-            {"row": anchorPointRow + 1, "col": anchorPointCol + 1}
-        ];
-        for (const point of areaPoints) {
-            if (point.row >= startRow && point.row <= endRow && point.col >= startCol && point.col <= endCol) {
-                return true;
-            }
-        }
-        return false;
-    }
-    else if (item.meta["技能范围"].includes("大圆")) {
-        const areaPoints = [
-            {"row": anchorPointRow, "col": anchorPointCol},
-            {"row": anchorPointRow + 1, "col": anchorPointCol},
-            {"row": anchorPointRow, "col": anchorPointCol + 1},
-            {"row": anchorPointRow - 1, "col": anchorPointCol},
-            {"row": anchorPointRow, "col": anchorPointCol - 1},
-            {"row": anchorPointRow - 1, "col": anchorPointCol - 1},
-            {"row": anchorPointRow - 1, "col": anchorPointCol + 1},
-            {"row": anchorPointRow + 1, "col": anchorPointCol - 1},
-            {"row": anchorPointRow + 1, "col": anchorPointCol + 1},
-            {"row": anchorPointRow + 2, "col": anchorPointCol},
-            {"row": anchorPointRow - 2, "col": anchorPointCol},
-            {"row": anchorPointRow, "col": anchorPointCol + 2},
-            {"row": anchorPointRow, "col": anchorPointCol - 2}
-        ];
-        for (const point of areaPoints) {
-            if (point.row >= startRow && point.row <= endRow && point.col >= startCol && point.col <= endCol) {
-                return true;
-            }
-        }
-        return false;
-    }
-    return false;
-}
 
-const _alderpaw_ctb_Game_Action_makeTargets = Game_Action.prototype.makeTargets;
-Game_Action.prototype.makeTargets = function() {
-    const targets = _alderpaw_ctb_Game_Action_makeTargets.call(this);
-    const item = this.item();
-    const anchorBattler = targets[0];
-    if (anchorBattler && item && item.meta["目标指定"] && item.meta["技能范围"]) {
-        if (anchorBattler.isEnemy()) {
-            for (const enemy of $gameTroop.aliveMembers()) {
-                if (enemy.index() === anchorBattler.index()) {
-                    continue;
-                }
-                if (checkScopeTarget(anchorBattler, enemy, item)) {
-                    targets.push(enemy);
+if (Imported.VisuMZ_2_BattleGridSystem) {
+    /**
+     * 
+     * @param {*} anchorBattler 选中的目标，圆心
+     * @param {*} battler 要判断是否在范围内的其他目标
+     * @param {*} item 技能或物品
+     * @returns 
+     */
+    function checkScopeTarget(anchorBattler, battler, item) {
+        if (anchorBattler == null || battler == null || item == null || item.meta["技能范围"] == null) {
+            return false;
+        }
+        const anchorPointRow = anchorBattler._gridLocation.flank;
+        const anchorPointCol = anchorBattler._gridLocation.rank;
+        const startRow = battler._gridLocation.flank;
+        const endRow = battler.isEnemy() ? battler._gridLocation.flank + battler._gridSize.flank - 1 : startRow;
+        const startCol = battler._gridLocation.rank;
+        const endCol = battler.isEnemy() ? battler._gridLocation.rank + battler._gridSize.rank - 1 : startCol;
+        if (item.meta["技能范围"].includes("小圆")) {
+            const areaPoints = [
+                {"row": anchorPointRow, "col": anchorPointCol},
+                {"row": anchorPointRow + 1, "col": anchorPointCol},
+                {"row": anchorPointRow, "col": anchorPointCol + 1},
+                {"row": anchorPointRow - 1, "col": anchorPointCol},
+                {"row": anchorPointRow, "col": anchorPointCol - 1}
+            ];
+            for (const point of areaPoints) {
+                if (point.row >= startRow && point.row <= endRow && point.col >= startCol && point.col <= endCol) {
+                    return true;
                 }
             }
+            return false;
         }
-        else {
-            for (const actor of $gameParty.aliveMembers()) {
-                if (actor.index() === anchorBattler.index()) {
-                    continue;
-                }
-                if (checkScopeTarget(anchorBattler, actor, item)) {
-                    targets.push(actor);
+        else if (item.meta["技能范围"].includes("中圆")) {
+            const areaPoints = [
+                {"row": anchorPointRow, "col": anchorPointCol},
+                {"row": anchorPointRow + 1, "col": anchorPointCol},
+                {"row": anchorPointRow, "col": anchorPointCol + 1},
+                {"row": anchorPointRow - 1, "col": anchorPointCol},
+                {"row": anchorPointRow, "col": anchorPointCol - 1},
+                {"row": anchorPointRow - 1, "col": anchorPointCol - 1},
+                {"row": anchorPointRow - 1, "col": anchorPointCol + 1},
+                {"row": anchorPointRow + 1, "col": anchorPointCol - 1},
+                {"row": anchorPointRow + 1, "col": anchorPointCol + 1}
+            ];
+            for (const point of areaPoints) {
+                if (point.row >= startRow && point.row <= endRow && point.col >= startCol && point.col <= endCol) {
+                    return true;
                 }
             }
+            return false;
         }
+        else if (item.meta["技能范围"].includes("大圆")) {
+            const areaPoints = [
+                {"row": anchorPointRow, "col": anchorPointCol},
+                {"row": anchorPointRow + 1, "col": anchorPointCol},
+                {"row": anchorPointRow, "col": anchorPointCol + 1},
+                {"row": anchorPointRow - 1, "col": anchorPointCol},
+                {"row": anchorPointRow, "col": anchorPointCol - 1},
+                {"row": anchorPointRow - 1, "col": anchorPointCol - 1},
+                {"row": anchorPointRow - 1, "col": anchorPointCol + 1},
+                {"row": anchorPointRow + 1, "col": anchorPointCol - 1},
+                {"row": anchorPointRow + 1, "col": anchorPointCol + 1},
+                {"row": anchorPointRow + 2, "col": anchorPointCol},
+                {"row": anchorPointRow - 2, "col": anchorPointCol},
+                {"row": anchorPointRow, "col": anchorPointCol + 2},
+                {"row": anchorPointRow, "col": anchorPointCol - 2}
+            ];
+            for (const point of areaPoints) {
+                if (point.row >= startRow && point.row <= endRow && point.col >= startCol && point.col <= endCol) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return false;
     }
-    return targets;
+
+    const _alderpaw_ctb_Game_Action_makeTargets = Game_Action.prototype.makeTargets;
+    Game_Action.prototype.makeTargets = function() {
+        const targets = _alderpaw_ctb_Game_Action_makeTargets.call(this);
+        const item = this.item();
+        const anchorBattler = targets[0];
+        if (anchorBattler && item && item.meta["目标指定"] && item.meta["技能范围"]) {
+            if (anchorBattler.isEnemy()) {
+                for (const enemy of $gameTroop.aliveMembers()) {
+                    if (enemy.index() === anchorBattler.index()) {
+                        continue;
+                    }
+                    if (checkScopeTarget(anchorBattler, enemy, item)) {
+                        targets.push(enemy);
+                    }
+                }
+            }
+            else {
+                for (const actor of $gameParty.aliveMembers()) {
+                    if (actor.index() === anchorBattler.index()) {
+                        continue;
+                    }
+                    if (checkScopeTarget(anchorBattler, actor, item)) {
+                        targets.push(actor);
+                    }
+                }
+            }
+        }
+        return targets;
+    }
 }
 
 const _alderpaw_ctb_Sprite_Battler_initMembers = Sprite_Battler.prototype.initMembers;
@@ -1683,7 +1691,7 @@ Sprite_Battler.prototype.updateSelectionEffect = function() {
 };
 
 //选择网格为目标时
-if (typeof Window_BattleGridSelectNode !== 'undefined') {
+if (Imported.VisuMZ_2_BattleGridSystem) {
     const _alderpaw_ctb_windowBattleGridSelectNode_select = Window_BattleGridSelectNode.prototype.select;
     Window_BattleGridSelectNode.prototype.select = function(index) {
         _alderpaw_ctb_windowBattleGridSelectNode_select.call(this, index);
@@ -1760,32 +1768,16 @@ CTB_Gauge.prototype.updateAnchor = function() {
 		return;
 	}
     gCountForDelayAnchor++;
-    if (Alderpaw.ctbLayoutMode) {
-        for (let i = 0; i < this._currentPosAnchors.length; i++) {
-            if (gCountForDelayAnchor >= 15 && gCountForDelayAnchor < 30) {
-                this._currentPosAnchors[i].y = 16;
-                this._predictPosAnchors[i].y = 14;
-                this._delay_anchor_num.y = 20;
-            }
-            else if (gCountForDelayAnchor < 15) {
-                this._currentPosAnchors[i].y = 14;
-                this._predictPosAnchors[i].y = 16;
-                this._delay_anchor_num.y = 22;
-            }
+    for (let i = 0; i < this._currentPosAnchors.length; i++) {
+        if (gCountForDelayAnchor >= 15 && gCountForDelayAnchor < 30) {
+            this._currentPosAnchors[i].y = 16;
+            this._predictPosAnchors[i].y = 14;
+            this._delay_anchor_num.y = 20;
         }
-    }
-    else {
-        for (let i = 0; i < this._currentPosAnchors.length; i++) {
-            if (gCountForDelayAnchor >= 15 && gCountForDelayAnchor < 30) {
-                this._currentPosAnchors[i].x = 80;
-                this._predictPosAnchors[i].x = 78;
-                this._delay_anchor_num.x = 80;
-            }
-            else if (gCountForDelayAnchor < 15) {
-                this._currentPosAnchors[i].x = 78;
-                this._predictPosAnchors[i].x = 80;
-                this._delay_anchor_num.x = 82;
-            }
+        else if (gCountForDelayAnchor < 15) {
+            this._currentPosAnchors[i].y = 14;
+            this._predictPosAnchors[i].y = 16;
+            this._delay_anchor_num.y = 22;
         }
     }
     if (gCountForDelayAnchor >= 30) {
@@ -1882,10 +1874,10 @@ Game_Battler.prototype.startTpbCasting = function() {
     let isMagic = false;
     let delay = 0;
     const actions = this._actions.filter(action => action.isValid());
-    //如果没有可用的action，直接跳过，避免空转
-    if (actions.length === 0) {
-        return;
-    }
+    //如果没有可用的action，直接ready，避免卡死
+    // if (actions.length === 0) {
+    //     this._tpbState = "ready";
+    // }
     const items = actions.map(action => action.item());
     for (let i = 0; i < items.length; i++) {
         if (items[i] == null) {
@@ -1923,7 +1915,6 @@ Game_Battler.prototype.startTpbCasting = function() {
     }
     else {
         if (this._actionTime === 0) {
-            console.log(this.name() + "变成ready状态")
             this._tpbState = "ready";
         }
     }
@@ -1933,10 +1924,10 @@ Game_Battler.prototype.startTpbAction = function() {
     //正式流程
     let tempDelay = 0, isDelayUpdated = false, isMagic = false;
     const actions = this._actions.filter(action => action.isValid());
-    //如果没有可用的action，直接跳过，避免空转
-    if (actions.length === 0) {
-        return;
-    }
+    //如果没有可用的action，直接ready，避免卡死
+    // if (actions.length === 0) {
+    //     this._tpbState = "ready";
+    // }
     const items = actions.map(action => action.item());
     for (let i = 0; i < items.length; i++) {
         if (items[i] == null) {
@@ -2514,10 +2505,14 @@ Game_Battler.prototype.addState = function(stateId) {
 //控制暴击
 const _alderpaw_ctb_gameAction_itemCri = Game_Action.prototype.itemCri;
 Game_Action.prototype.itemCri = function(target) {
+    const user = this.subject();
     if ($scene._ctbGauge && $scene._ctbGauge._globalBonusDict && $scene._ctbGauge._currentBonusList && $scene._ctbGauge._currentBonusList[0] >= 0) {
         if ($scene._ctbGauge._globalBonusDict[$scene._ctbGauge._currentBonusList[0]].effectType === "本次攻击必定暴击") {
             return 1.0;
         }
+    }
+    if (user && this.isMagical()) {
+        return user.magic_critical;
     }
 	return _alderpaw_ctb_gameAction_itemCri.call(this, target);
 };
@@ -2887,16 +2882,28 @@ Object.defineProperties(Game_Battler.prototype, {
         configurable: true
     },
     // 残血伤害倍率
-    low_hp_damage_rate: {
+    low_hp_craft_damage_rate: {
         get: function() {
             return this.cparam(11);
         },
         configurable: true
     },
-    // 满血伤害倍率
-    high_hp_damage_rate: {
+    low_hp_magic_damage_rate: {
         get: function() {
             return this.cparam(12);
+        },
+        configurable: true
+    },
+    // 满血伤害倍率
+    high_hp_craft_damage_rate: {
+        get: function() {
+            return this.cparam(13);
+        },
+        configurable: true
+    },
+    high_hp_magic_damage_rate: {
+        get: function() {
+            return this.cparam(14);
         },
         configurable: true
     }
@@ -2914,7 +2921,14 @@ Game_Battler.prototype.cparamPlus = function(paramId) {
     let value = 0;
     if (this.isActor()) {
         //装备
-        for (const item of this.equips().concat(this.magicStones())) {
+        let allItems;
+        if (Imported.Alderpaw_MagicStone) {
+            allItems = this.equips().concat(this.magicStones());
+        }
+        else {
+            allItems = this.equips();
+        }
+        for (const item of allItems) {
             if (item && item.meta) {
                 //处理每一类特性
                 if (paramId === 2 && item.meta["Magic Critical Rate"]) {
@@ -2944,11 +2958,17 @@ Game_Battler.prototype.cparamPlus = function(paramId) {
                 if (paramId === 10 && item.meta["Hit Tp Charge Rate"]) {
                     value += parseFloat(eval(item.meta["Hit Tp Charge Rate"]));
                 }
-                if (paramId === 11 && item.meta["Low Hp Damage Rate"]) {
-                    value += parseFloat(eval(item.meta["Low Hp Damage Rate"]));
+                if (paramId === 11 && item.meta["Low Hp Craft Damage Rate"]) {
+                    value += parseFloat(eval(item.meta["Low Hp Craft Damage Rate"]));
                 }
-                if (paramId === 12 && item.meta["High Hp Damage Rate"]) {
-                    value += parseFloat(eval(item.meta["High Hp Damage Rate"]));
+                if (paramId === 12 && item.meta["Low Hp Magic Damage Rate"]) {
+                    value += parseFloat(eval(item.meta["Low Hp Magic Damage Rate"]));
+                }
+                if (paramId === 13 && item.meta["High Hp Craft Damage Rate"]) {
+                    value += parseFloat(eval(item.meta["High Hp Craft Damage Rate"]));
+                }
+                if (paramId === 14 && item.meta["High Hp Magic Damage Rate"]) {
+                    value += parseFloat(eval(item.meta["High Hp Magic Damage Rate"]));
                 }
             }
         }
@@ -2985,11 +3005,17 @@ Game_Battler.prototype.cparamPlus = function(paramId) {
             if (paramId === 10 && item.meta["Hit Tp Charge Rate"]) {
                 value += parseFloat(eval(item.meta["Hit Tp Charge Rate"]));
             }
-            if (paramId === 11 && item.meta["Low Hp Damage Rate"]) {
-                value += parseFloat(eval(item.meta["Low Hp Damage Rate"]));
+            if (paramId === 11 && item.meta["Low Hp Craft Damage Rate"]) {
+                value += parseFloat(eval(item.meta["Low Hp Craft Damage Rate"]));
             }
-            if (paramId === 12 && item.meta["High Hp Damage Rate"]) {
-                value += parseFloat(eval(item.meta["High Hp Damage Rate"]));
+            if (paramId === 12 && item.meta["Low Hp Magic Damage Rate"]) {
+                value += parseFloat(eval(item.meta["Low Hp Magic Damage Rate"]));
+            }
+            if (paramId === 13 && item.meta["High Hp Craft Damage Rate"]) {
+                value += parseFloat(eval(item.meta["High Hp Craft Damage Rate"]));
+            }
+            if (paramId === 14 && item.meta["High Hp Magic Damage Rate"]) {
+                value += parseFloat(eval(item.meta["High Hp Magic Damage Rate"]));
             }
         }
     }
@@ -3005,13 +3031,20 @@ Game_Battler.prototype.cparamRate = function(paramId) {
     let value = 1.0;
     if (this.isActor()) {
         //装备
-        for (const item of this.equips().concat(this.magicStones())) {
+        let allItems;
+        if (Imported.Alderpaw_MagicStone) {
+            allItems = this.equips().concat(this.magicStones());
+        }
+        else {
+            allItems = this.equips();
+        }
+        for (const item of allItems) {
             if (item && item.meta) {
-                if (paramId === 0 && item.meta["craft delayST rate"]) {
-                    value *= parseFloat(eval(item.meta["craft delayST rate"]));  //减10%就在注释里写0.9，乘算，防止能降到0
+                if (paramId === 0 && item.meta["Craft DelayST Rate"]) {
+                    value *= parseFloat(eval(item.meta["Craft DelayST Rate"]));  //减10%就在注释里写0.9，乘算，防止能降到0
                 }
-                if (paramId === 1 && item.meta["castST rate"]) {
-                    value *= parseFloat(eval(item.meta["castST rate"]));
+                if (paramId === 1 && item.meta["CastST Rate"]) {
+                    value *= parseFloat(eval(item.meta["CastST Rate"]));
                 }
             }
         }
@@ -3019,11 +3052,11 @@ Game_Battler.prototype.cparamRate = function(paramId) {
         for (const stateId of this._states) {
             const item = $dataStates[stateId];
             if (item && item.meta) {
-                if (paramId === 0 && item.meta["craft delayST rate"]) {
-                    value *= parseFloat(eval(item.meta["craft delayST rate"]));  //减10%就在注释里写0.9，乘算，防止能降到0
+                if (paramId === 0 && item.meta["Craft DelayST Rate"]) {
+                    value *= parseFloat(eval(item.meta["Craft DelayST Rate"]));  //减10%就在注释里写0.9，乘算，防止能降到0
                 }
-                if (paramId === 1 && item.meta["castST rate"]) {
-                    value *= parseFloat(eval(item.meta["castST rate"]));
+                if (paramId === 1 && item.meta["CastST Rate"]) {
+                    value *= parseFloat(eval(item.meta["CastST Rate"]));
                 }
             }
         }
@@ -3041,7 +3074,7 @@ Game_Battler.prototype.cparamMin = function(paramId) {
 };
 
 Game_Battler.prototype.cparamMax = function(/*paramId*/) {
-    return 10;
+    return 100;
 };
 
 Game_Battler.prototype.cparam = function(paramId) {
