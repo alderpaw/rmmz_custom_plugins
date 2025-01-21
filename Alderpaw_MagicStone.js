@@ -4,7 +4,7 @@
 
 /*:
  * @target MZ
- * @plugindesc [Version 1.0] 类似于空零碧或者闪轨的回路系统
+ * @plugindesc [Version 1.1] 类似于空零碧或者闪轨的回路系统
  * @author Alderpaw
  * @url https://github.com/alderpaw/rmmz_custom_plugins
  * 
