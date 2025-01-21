@@ -23,6 +23,12 @@
  * @desc 调整行动条在屏幕上的位置。
  * @default 0
  * 
+ * @param ctbGaugeAutoReposition
+ * @text ctb行动条自动向下偏移
+ * @type boolean
+ * @desc 显示技能和物品的描述信息时，是否将行动条自动向下偏移，以免挡住屏幕上方的描述窗口。
+ * @default true
+ * 
  * @param ctbMaxShowNum
  * @text ctb行动条最大单位显示数
  * @type number
@@ -488,6 +494,7 @@ Alderpaw.ctbIdleSkillId = Number(alderpawCtbParameters["ctbIdleSkillId"] || 8);
 Alderpaw.ctbGaugeBonusAppearPossibility = Number(alderpawCtbParameters["ctbGaugeBonusAppearPossibility"] || 0);
 Alderpaw.ctbGaugeBonusList = alderpawCtbParameters["ctbGaugeBonusList"] || [];
 Alderpaw.ctbShowAdvancePopup = alderpawCtbParameters["ctbShowAdvancePopup"] === "false" ? false : true;
+Alderpaw.ctbGaugeAutoReposition = alderpawCtbParameters["ctbGaugeAutoReposition"] === "false" ? false : true;
 Alderpaw.ctbCurrentAnchorImg = alderpawCtbParameters["ctbCurrentAnchorImg"] || "anchor_current";
 Alderpaw.ctbPredictAnchorImg = alderpawCtbParameters["ctbPredictAnchorImg"] || "anchor_predict";
 Alderpaw.ctbSBreakTriggerSE = alderpawCtbParameters["ctbSBreakTriggerSE"] || null;
@@ -620,7 +627,7 @@ CTB_Gauge.prototype.update = function() {
         }
     }
     this.updateAnchor();
-    if ($scene._helpWindow.visible) {
+    if ($scene._helpWindow.visible && Alderpaw.ctbGaugeAutoReposition) {
         this.y = Alderpaw.ctbPosY + 72;
     }
     else {
