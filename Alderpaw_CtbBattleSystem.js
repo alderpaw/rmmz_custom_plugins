@@ -135,7 +135,7 @@
  * @param ctbGaugeBonusAppearPossibility
  * @text 每次插入AT奖励的概率
  * @desc 每次ctb行动条流转(某角色行动结束)时，有多大的概率在行动条最后插入一个AT奖励？
- * @type number
+ * @type string
  * @default 0.25
  * @parent ctbGaugeBonusSetting
  *
