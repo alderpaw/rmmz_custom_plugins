@@ -592,10 +592,10 @@ CTB_Gauge.prototype.initialize = function() {
     //创建指示具体delay数值的文本
     this._delay_anchor_num = new Sprite(new Bitmap(160, 32));
     this._delay_anchor_num.bitmap.fontSize = 18;
-	// if (FontManager._states["my-battle-hud-font"] !== "loaded") {
-	// 	FontManager.load("my-battle-hud-font", "ZCOOL_KuaiLe2016.otf");
-	// }
-    // this._delay_anchor_num.bitmap.fontFace = "my-battle-hud-font";
+	if (FontManager._states["my-battle-hud-font"] !== "loaded") {
+		FontManager.load("my-battle-hud-font", "ZCOOL_KuaiLe2016.otf");
+	}
+    this._delay_anchor_num.bitmap.fontFace = "my-battle-hud-font";
     this._delay_anchor_num.visible = false;
     this._delay_anchor_num.x = 0;
     this._delay_anchor_num.y = -4;
@@ -1845,6 +1845,8 @@ Game_Battler.prototype.initMembers = function() {
     this._isReceivedBonus = false;
     this._anchorSelected = false;
     this._shieldHp = 0;
+    this._currentStunValue = 0;
+    this._maxStunValue = 1;
 };
 
 //==============================
@@ -2047,7 +2049,6 @@ Game_Battler.prototype.onTpbCharged = function() {
     if (!this.shouldDelayTpbCharge()) {
         this.finishTpbCharge();
     }
-    console.log("轮到行动:", this.name());
     gainHpMpTpReward(this);
 };
 
@@ -2074,6 +2075,7 @@ Game_Battler.prototype.initTpbTurn = function() {
 Game_Battler.prototype.startTpbTurn = function() {
     this._tpbTurnEnd = false;
     this._tpbTurnCount++;
+    $gameTroop._turnCount++;
     this._tpbIdleTime = 0;
     if (this.numActions() === 0) {
         this.makeTpbActions();
@@ -2081,6 +2083,7 @@ Game_Battler.prototype.startTpbTurn = function() {
     if ($scene._skillWindow) {
         $scene._skillWindow.deselect();
     }
+    console.log("当前回合:", $gameTroop.turnCount(), "开始行动:", this.name(), this.skills());
 };
 
 Game_Battler.prototype.makeTpbActions = function() {
@@ -2724,7 +2727,28 @@ Window_ActorCommand.prototype.open = function() {
         $scene._specialSkillWindow.activate();
         $scene._specialSkillWindow.select(0);
     }
-};
+}
+
+//显示指令的帮助信息
+const alderpaw_ctb_Window_ActorCommand_select = Window_ActorCommand.prototype.select;
+Window_ActorCommand.prototype.select = function(index) {
+    alderpaw_ctb_Window_ActorCommand_select.call(this, index);
+    const currentActor = this.actor();
+    if (index !== -1 && $scene._helpWindow != null && currentActor != null) {
+        const currentCommandSymbol = this.commandSymbol(index);
+        switch (currentCommandSymbol) {
+            case "attack":
+                $scene._helpWindow.setItem($dataSkills[currentActor.attackSkillId()])
+                break;
+            case "guard":
+                $scene._helpWindow.setItem($dataSkills[currentActor.guardSkillId()])
+                break;
+            default:
+                break;
+        }
+        $scene._helpWindow.show();
+    }
+}
 
 const alderpaw_ctb_sceneBattle_update = Scene_Battle.prototype.update;
 Scene_Battle.prototype.update = function() {
@@ -2914,6 +2938,13 @@ Object.defineProperties(Game_Battler.prototype, {
             return this.cparam(14);
         },
         configurable: true
+    },
+    //眩晕值增加倍率
+    stun_break_rate: {
+        get: function() {
+            return this.cparam(15);
+        },
+        configurable: true
     }
 });
 
@@ -2978,6 +3009,9 @@ Game_Battler.prototype.cparamPlus = function(paramId) {
                 if (paramId === 14 && item.meta["High Hp Magic Damage Rate"]) {
                     value += parseFloat(eval(item.meta["High Hp Magic Damage Rate"]));
                 }
+                if (paramId === 15 && item.meta["Stun Break Rate"]) {
+                    value += parseFloat(eval(item.meta["Stun Break Rate"]));
+                }
             }
         }
     }
@@ -3024,6 +3058,9 @@ Game_Battler.prototype.cparamPlus = function(paramId) {
             }
             if (paramId === 14 && item.meta["High Hp Magic Damage Rate"]) {
                 value += parseFloat(eval(item.meta["High Hp Magic Damage Rate"]));
+            }
+            if (paramId === 15 && item.meta["Stun Break Rate"]) {
+                value += parseFloat(eval(item.meta["Stun Break Rate"]));
             }
         }
     }
@@ -3143,6 +3180,20 @@ Game_Battler.prototype.onTurnEnd = function() {
 
 
 // ==================== //
+/* 修改回合计数逻辑 */
+// ==================== //
+const _alderpaw_ctb_gameTroop_increasetTurn = Game_Troop.prototype.increaseTurn;
+Game_Troop.prototype.increaseTurn = function() {
+    _alderpaw_ctb_gameTroop_increasetTurn.call(this);
+    this._turnCount--;
+};
+
+Game_Troop.prototype.isTpbTurnEnd = function() {
+    return true;
+};
+
+
+// ==================== //
 /* 设定敌人等级及是否为Boss */
 // ==================== //
 
@@ -3157,11 +3208,15 @@ const _alderpaw_ctb_gameEnemy_setup = Game_Enemy.prototype.setup;
 Game_Enemy.prototype.setup = function(enemyId, x, y) {
 	_alderpaw_ctb_gameEnemy_setup.call(this, enemyId, x, y);
 	if (this.enemy() && this.enemy().meta) {
-        if (this.enemy().meta["Boss"]) {
+        const enemy = this.enemy();
+        if (enemy.meta["Boss"]) {
             this._isBoss = true;
         }
-		if (this.enemy().meta["Level"]) {
-            this.level = parseInt(this.enemy().meta["Level"]);
+		if (enemy.meta["Level"]) {
+            this.level = parseInt(enemy.meta["Level"]);
+        }
+        if (enemy && enemy.meta["Max Stun Value"]) {
+            this._maxStunValue = parseInt(enemy.meta["Max Stun Value"]);
         }
 	}
 }
@@ -3184,7 +3239,7 @@ class Sprite_Gauge_Shield extends Sprite_Gauge {
     }
 
     label() {
-        return "HP护盾";
+        return "护盾";
     }
 
     gaugeColor1() {
@@ -3196,7 +3251,7 @@ class Sprite_Gauge_Shield extends Sprite_Gauge {
     }
 
     labelFontSize() {
-        return $gameSystem.mainFontSize() - 6;
+        return $gameSystem.mainFontSize() - 4;
     }
 
     labelY() {
@@ -3226,13 +3281,53 @@ Window_SkillList.prototype.drawItem = function(index) {
         const rect = this.itemLineRect(index);
         this.changePaintOpacity(this.isEnabled(skill));
         this.drawItemName(skill, rect.x, rect.y, rect.width - costWidth);
-        this.drawSkillCost(skill, rect.x - 2 * ImageManager.iconWidth - 8, rect.y, rect.width);
+        this.drawSkillCost(skill, rect.x - ImageManager.iconWidth - 8, rect.y, rect.width);
         if (skill.meta["后缀图标"]) {
-            const definedIcons = skill.meta["后缀图标"].split(",");
-            const effectIconId = parseInt(definedIcons[0]) || 0;
-            const rangeIconId = parseInt(definedIcons[1]) || 0;
-            this.drawTextEx(`\\I[${effectIconId}]\\I[${rangeIconId}]`, rect.x + rect.width - 2 * ImageManager.iconWidth - 4, rect.y, ImageManager.iconWidth);
+            const effectIconId = parseInt(skill.meta["后缀图标"]) || 0;
+            this.drawTextEx(`\\I[${effectIconId}]`, rect.x + rect.width - ImageManager.iconWidth - 4, rect.y, ImageManager.iconWidth);
         }
         this.changePaintOpacity(1);
     }
 };
+
+
+// ==================== //
+/* 默认武器 */
+// ==================== //
+const _alderpaw_ctb_gameActor_changeEquip = Game_Actor.prototype.changeEquip;
+Game_Actor.prototype.changeEquip = function(slotId, item) {
+    _alderpaw_ctb_gameActor_changeEquip.call(this, slotId, item);
+    //不允许卸下武器
+    if (slotId === 0 && item == null) {
+        const defaultWeaponId = this.actor().meta["Default Weapon"];
+        if (defaultWeaponId && $dataWeapons[defaultWeaponId]) {
+            this._equips[0].setEquip(1, defaultWeaponId);
+            return;
+        }
+    }
+}
+
+//不要获取训练用武器
+const _alderpaw_equipmentSkill_Game_Party_gainItem = Game_Party.prototype.gainItem;
+Game_Party.prototype.gainItem = function(item, amount, includeEquip) {
+  for (const actor of this.allMembers()) {
+    if (item != null && DataManager.isWeapon(item) && actor.actor().meta["Default Weapon"] == item.id) {
+      return;
+    }
+  }
+  _alderpaw_equipmentSkill_Game_Party_gainItem.call(this, item, amount, includeEquip);
+};
+
+
+// ==================== //
+/* 战斗中交换队员功能的兼容 */
+// ==================== //
+if (Imported.VisuMZ_2_PartySystem) {
+    const _alderpaw_ctb_sceneBattle_onPartySwitchOk = Scene_Battle.prototype.onPartySwitchOk;
+    Scene_Battle.prototype.onPartySwitchOk = function() {
+        _alderpaw_ctb_sceneBattle_onPartySwitchOk.call(this);
+        const switchedActor = this._partyMemberSwitchWindow.currentActor();
+        switchedActor._actionTime = 0;
+        BattleManager._currentActor = switchedActor;
+    }
+}
