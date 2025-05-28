@@ -592,10 +592,10 @@ CTB_Gauge.prototype.initialize = function() {
     //创建指示具体delay数值的文本
     this._delay_anchor_num = new Sprite(new Bitmap(160, 32));
     this._delay_anchor_num.bitmap.fontSize = 18;
-	if (FontManager._states["my-battle-hud-font"] !== "loaded") {
-		FontManager.load("my-battle-hud-font", "ZCOOL_KuaiLe2016.otf");
-	}
-    this._delay_anchor_num.bitmap.fontFace = "my-battle-hud-font";
+	// if (FontManager._states["my-battle-hud-font"] !== "loaded") {
+	// 	FontManager.load("my-battle-hud-font", "ZCOOL_KuaiLe2016.otf");
+	// }
+    // this._delay_anchor_num.bitmap.fontFace = "my-battle-hud-font";
     this._delay_anchor_num.visible = false;
     this._delay_anchor_num.x = 0;
     this._delay_anchor_num.y = -4;
@@ -2770,6 +2770,10 @@ Window_BattleSpecialSkill.prototype.initialize = function(rect) {
 Window_BattleSpecialSkill.prototype.makeItemList = function() {
     this._data = this._actor.skills();
 	this._data = this._data.filter(item => item.meta["奥义技"]);
+};
+
+Window_BattleSpecialSkill.prototype.maxCols = function() {
+    return 1;
 };
 
 const _alderpaw_ctb_sceneBattle_createAllWindows = Scene_Battle.prototype.createAllWindows;
